@@ -152,7 +152,6 @@ class MicrosoftRewards:
                 option2.click()
             this_or_that_page.wait_for_load_state()
             this_or_that_page.wait_for_timeout(1000)
-            #
         this_or_that_page.wait_for_timeout(5000)
         this_or_that_page.close()
 
