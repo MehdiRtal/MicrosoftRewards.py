@@ -10,4 +10,4 @@ RUN playwright install webkit
 
 COPY ./ ./
 
-CMD [ "python", "main.py" ]
+CMD ["python", "main.py", "--headless"]

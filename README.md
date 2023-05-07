@@ -1,1 +1,1 @@
-# MicrosoftRewardsV2
+# Microsoft Rewards Farmer

@@ -209,7 +209,7 @@ class MicrosoftRewards:
             if not parent_promotion["complete"]:
                 child_promotions = card["childPromotions"]
                 for promotion in child_promotions:
-                    if not promotion["complete"] or "appstore" in promotion["promotionType"]:
+                    if not promotion["complete"] or "appstore" not in promotion["promotionType"]:
                         if promotion["promotionType"] == "quiz":
                             if promotion["pointProgressMax"] == 40 or promotion["pointProgressMax"] == 30:
                                 self.__quiz(promotion["destinationUrl"])
