@@ -9,66 +9,67 @@ with open("words.txt", "r") as f:
     words = f.read().splitlines()
 
 class MicrosoftRewards:
-    def __init__(self, headless: bool = False, proxy: dict = None):
+    def __init__(self, headless: bool = False, proxy: dict = None, session: dict = None):
+        self.session = session
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.webkit.launch(headless=headless, proxy=proxy if proxy else None)
-        self.context = self.browser.new_context(user_agent=UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value]).get_random_user_agent())
+        self.browser = self.playwright.webkit.launch(headless=headless, proxy=proxy)
+        self.context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value]).get_random_user_agent())
         self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()
-        self.state = None
         self.dashboard = None
     
     def login(self, username: str, password: str):
         self.page.goto("https://rewards.bing.com/")
-        self.page.locator("id=i0116").type(username)
-        self.page.locator("id=idSIButton9").click()
-        error = self.page.locator("id=usernameError")
-        try:
-            error.wait_for(state="attached", timeout=3000)
-        except:
-            pass
-        else:
-            raise Exception(error.inner_text())
-        self.page.locator("id=i0118").type(password)
-        self.page.locator("id=idSIButton9").click()
-        self.page.wait_for_load_state()
-        error = self.page.locator("id=passwordError")
-        try:
-            error.wait_for(state="attached", timeout=3000)
-        except:
-            pass
-        else:
-            raise Exception(error.inner_text())
-        self.page.locator("id=idSIButton9").click()
-        self.page.wait_for_load_state()
-        error = self.page.locator("id=iSelectProofTitle")
-        try:
-            error.wait_for(state="attached", timeout=3000)
-        except:
-            pass
-        else:
-            raise Exception(error.inner_text())
-        error = self.page.locator("id=error").locator("css=h1")
-        try:
-            error.wait_for(state="attached", timeout=3000)
-        except:
-            pass
-        else:
-            raise Exception(error.inner_text())
-        bing_page = self.context.new_page()
-        bing_page.goto("https://www.bing.com/rewards/signin")
-        bing_page.locator("css=[class='identityOption']").locator("css=a").click()
-        bing_page.wait_for_load_state()
-        bing_page.wait_for_timeout(5000)
-        bing_page.close()
-        self.state = self.context.storage_state()
+        if not self.session:
+            self.page.locator("id=i0116").type(username)
+            self.page.locator("id=idSIButton9").click()
+            error = self.page.locator("id=usernameError")
+            try:
+                error.wait_for(state="attached", timeout=3000)
+            except:
+                pass
+            else:
+                raise Exception(error.inner_text())
+            self.page.locator("id=i0118").type(password)
+            self.page.locator("id=idSIButton9").click()
+            self.page.wait_for_load_state()
+            error = self.page.locator("id=passwordError")
+            try:
+                error.wait_for(state="attached", timeout=3000)
+            except:
+                pass
+            else:
+                raise Exception(error.inner_text())
+            self.page.locator("id=idSIButton9").click()
+            self.page.wait_for_load_state()
+            error = self.page.locator("id=iSelectProofTitle")
+            try:
+                error.wait_for(state="attached", timeout=3000)
+            except:
+                pass
+            else:
+                raise Exception(error.inner_text())
+            error = self.page.locator("id=error").locator("css=h1")
+            try:
+                error.wait_for(state="attached", timeout=3000)
+            except:
+                pass
+            else:
+                raise Exception(error.inner_text())
+            bing_page = self.context.new_page()
+            bing_page.goto("https://www.bing.com/rewards/signin")
+            bing_page.locator("css=[class='identityOption']").locator("css=a").click()
+            bing_page.wait_for_load_state()
+            bing_page.wait_for_timeout(5000)
+            bing_page.close()
+            self.session = self.context.storage_state()
         self.dashboard = self.page.evaluate("dashboard")
 
     def __search(self, count: int, mobile: bool = False):
         if mobile:
-            mobile_context = self.browser.new_context(storage_state=self.state, user_agent=UserAgent(operating_systems=[OperatingSystem.ANDROID.value]).get_random_user_agent())
+            mobile_context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(operating_systems=[OperatingSystem.ANDROID.value]).get_random_user_agent())
             mobile_context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
             mobile_context.set_default_navigation_timeout(60000)
             mobile_context.set_default_timeout(10000)
@@ -224,10 +225,15 @@ class MicrosoftRewards:
                             self.__url_reward(promotion["destinationUrl"])
     
     def set_goal(self, product_id: int):
-        self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={str(product_id)}")
+        self.page.goto(f"https://rewards.bing.com/redeem/{str(product_id)}")
+        self.page.locator("id=goal-set").click()
+    
+    def redeem_goal(self):
+        self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId=")
+        self.page.locator("id=goal-redeem").click()
         self.page.locator("id=redeem-checkout-review-confirm").click()
         self.page.locator("id=redeem-checkout-challenge-countrycode").select_option(value="212")
-        self.page.locator("id=redeem-checkout-challenge-fullnumber").type(self.phone_number)
+        self.page.locator("id=redeem-checkout-challenge-fullnumber").type("test")
 
 
     def __enter__(self):
