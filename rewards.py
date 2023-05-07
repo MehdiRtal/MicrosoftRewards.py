@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright
 import random
 from random_user_agent.user_agent import UserAgent
 from random_user_agent.params import SoftwareName, OperatingSystem
@@ -142,7 +142,6 @@ class MicrosoftRewards:
             while True:
                 if current_question() == i:
                     break
-                this_or_that_page.wait_for_timeout(1000)
             answer = this_or_that_page.evaluate("_w.rewardsQuizRenderInfo.correctAnswer")
             option1 = this_or_that_page.locator("id=rqAnswerOption0")
             option2 = this_or_that_page.locator("id=rqAnswerOption1")
