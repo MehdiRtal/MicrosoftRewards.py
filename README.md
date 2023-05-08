@@ -19,15 +19,15 @@ playwright install webkit
   {
     "username": "Your Email",
     "password": "Your Password",
-    "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)"
+    "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)",
     "goal": "Your Goal (https://rewards.bing.com/redeem/goal_id)"
   },
   {
     "username": "Your Email",
     "password": "Your Password",
-    "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)"
+    "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)",
     "goal": "Your Goal (https://rewards.bing.com/redeem/goal_id)"
-  }
+  },
 ]
 ```
 - Run the script.
