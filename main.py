@@ -1,7 +1,6 @@
 from rewards import MicrosoftRewards
 import argparse
 import json
-import json
 
 
 def main():
