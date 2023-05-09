@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JSON Code Generator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    @import url(https://fonts.cdnfonts.com/css/nexa-bold);*{margin:0;padding:0;outline:none;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body {
+      background-color: #141213;
+      color: #b8b8b8;
+      text-align: center;
+    }
+    #container {
+      margin: 0 auto;
+      max-width: 800px;
+      text-align: left;
+    }
+    h1,h2,h3,h4 {
+      text-align: center;
+      color: #ebebeb;
+    }
+    #account-section, #account-list-section {
+      margin-top: 20px;
+    }
+    label {
+      display: inline-block;
+      width: 100px;
+    }
+    input, button {
+      display: inline-block;
+      vertical-align: middle;
+      margin-bottom: 20px;
+      color: #252423; padding:12px 16px 8px 16px
+    }
+    /* Media queries */
+    @media screen and (max-width: 767px) {
+      #container {
+        max-width: 100%;
+        padding: 0 10px;
+      }
+      label {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+      }
+      input, button {
+        display: block;
+        width: 100%;
+      }
+      button {
+        margin-left: 0;
+        margin-top: 10px;
+      }
+    }
+  </style>
+  <link rel="shortcut icon" href="https://raw.githubusercontent.com/LeagueOfPoro/CapsuleFarmerEvolved/master/poro.ico">
+</head>
+<body>
+  <div id="container">
+    <h1>JSON Code Generator</h1>
+    <form>
+      <div id="account-section">
+        <h2>Add Account</h2>
+        <div class="input-box">
+          <label for="username">Username</label>
+          <input type="text" name="username" id="username" spellcheck="false" placeholder="Username" />
+        </div>
+        <div class="input-box">
+          <label for="password">Password:</label>
+          <input type="text" name="password" id="password" spellcheck="false" placeholder="Password:" />
+        </div>
+        <div class="input-box">
+          <label for="proxy">Proxy:</label>
+          <input type="text" name="proxy" id="proxy" spellcheck="false" placeholder="Proxy:" />
+        </div>
+        <div class="input-box">
+          <label for="goal">Goal:</label>
+          <input type="text" name="goal" id="goal" spellcheck="false" placeholder="Goal:" />
+        </div>
+        <button type="button" onclick="addAccount()">Add Account</button>
+      </div>
+      <hr />
+      <div id="account-list-section">
+        <h2>Account List</h2>
+        <table id="account-list">
+          <thead>
+            <tr>
+              <th style="width: 99px;">Username</th>
+              <th style="width: 99px;">Password</th>
+              <th style="width: 99px;">Proxy</th>
+              <th style="width: 99px;">Goal</th>
+              <th style="width: 99px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <hr />
+      <button type="button" onclick="generateJSON()">Generate JSON code</button>
+      <button type="button" onclick="copyJSON()">Copy JSON code</button>
+      <button type="button" onclick="downloadJSON()">Download JSON code</button>
+    </form>
+    <div id="output"></div>
+  </div>
+</body>
+</html>
+<script>
+    var accounts = [];
+
+    function addAccount() {
+      var account = {
+        "username": document.getElementById("username").value,
+        "password": document.getElementById("password").value
+      };
+      if (document.getElementById("proxy").value) {
+        account.proxy = document.getElementById("proxy").value;
+      }
+      if (document.getElementById("goal").value) {
+        account.goal = document.getElementById("goal").value;
+      }
+      accounts.push(account);
+      var table = document.getElementById("account-list").getElementsByTagName("tbody")[0];
+      var row = table.insertRow();
+      row.insertCell().textContent = account.username;
+      row.insertCell().textContent = account.password;
+      if (account.proxy) {
+        row.insertCell().textContent = account.proxy;
+      } else {
+        row.insertCell().textContent = "";
+      }
+      if (account.goal) {
+        row.insertCell().textContent = account.goal;
+      } else {
+        row.insertCell().textContent = "";
+      }
+      var actionsCell = row.insertCell();
+      var removeButton = document.createElement("button");
+      removeButton.textContent = "Remove";
+      removeButton.addEventListener("click", function() {
+        var rowIndex = this.parentNode.parentNode.rowIndex;
+        accounts.splice(rowIndex - 1, 1);
+        table.deleteRow(rowIndex);
+      });
+      actionsCell.appendChild(removeButton);
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("proxy").value = "";
+      document.getElementById("goal").value = "";
+    }
+
+    function generateJSON() {
+      var json = JSON.stringify(accounts, null, 2);
+      var output = document.getElementById("output");
+      output.innerHTML = `<pre>${json}</pre>`;
+    }
+
+    function copyJSON() {
+      var output = document.getElementById("output").querySelector("pre");
+      var range = document.createRange();
+      range.selectNode(output);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      document.execCommand("copy");
+      window.getSelection().removeAllRanges();
+    }
+
+    function downloadJSON() {
+      var json = JSON.stringify(accounts, null, 2);
+      var blob = new Blob([json], {type: "application/json;charset=utf-8"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "accounts.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
