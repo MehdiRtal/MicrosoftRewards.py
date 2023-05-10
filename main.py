@@ -1,7 +1,6 @@
 from multiprocessing.pool import ThreadPool
 import argparse
 import json
-import json
 
 from rewards import MicrosoftRewards
 
