@@ -9,10 +9,17 @@ with open("words.txt", "r") as f:
     words = f.read().splitlines()
 
 class MicrosoftRewards:
-    def __init__(self, headless: bool = False, proxy: dict = None, session: dict = None):
+    def __init__(self, headless: bool = False, proxy: str = None, session: dict = None):
         self.session = session
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.webkit.launch(headless=headless, proxy=proxy)
+        self.browser = self.playwright.webkit.launch(
+            headless=headless,
+            proxy={
+                "server": f"http://{proxy.split('@')[1]}",
+                "username": proxy.split("@")[0].split(":")[0] if "@" in proxy else None,
+                "password": proxy.split("@")[0].split(":")[1] if "@" in proxy else None
+            } if proxy else None
+        )
         self.context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value]).get_random_user_agent())
         self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
