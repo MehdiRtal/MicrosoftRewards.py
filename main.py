@@ -1,12 +1,29 @@
 from multiprocessing.pool import ThreadPool
 import argparse
 import json
+import os
 
 from rewards import MicrosoftRewards
 
+def prPurple(prt):
+    print(f"\033[95m{prt}\033[00m")
 
-with open("accounts.json", "r") as f:
-        accounts = json.load(f)
+def loadAccounts():
+        if not os.path.exists("accounts.json"):
+            with open("accounts.json", "w") as f:
+                json.dump([{
+                    "username": "Your Email",
+                    "password": "Your Password"
+                }], f, indent=4)
+            prPurple(f"[ACCOUNT] Accounts credential file 'accounts.json' created."
+                 "\n[ACCOUNT] Edit with your credentials and save, then press any key to continue...")
+            input("Press enter to close...")
+            os._exit(0)
+        with open("accounts.json", "r") as f:
+                accounts = json.load(f)
+        return accounts
+
+accounts = loadAccounts()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--headless", action="store_true", default=False)
