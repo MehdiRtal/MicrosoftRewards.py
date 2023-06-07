@@ -10,6 +10,7 @@ with open("accounts.json", "r") as f:
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--headless", action="store_true", default=False)
+parser.add_argument("--session", action="store_true", default=False)
 parser.add_argument("--workers", type=int, default=1)
 args = parser.parse_args()
 
@@ -29,9 +30,10 @@ def farm(account):
     except Exception as e:
         print(e)
     else:
-        account["session"] = json.dumps(rewards.session)
-        with open("accounts.json", "w") as f:
-            json.dump(accounts, f, indent=4)
+        if args.session:
+            account["session"] = json.dumps(rewards.session)
+            with open("accounts.json", "w") as f:
+                json.dump(accounts, f, indent=4)
 
 if __name__ == "__main__":
     with ThreadPool(args.workers) as pool:

@@ -2,7 +2,9 @@ from playwright.sync_api import sync_playwright
 import random
 from random_user_agent.user_agent import UserAgent
 from random_user_agent.params import SoftwareName, OperatingSystem
+from pyvirtualdisplay import Display
 import datetime
+import os
 
 
 with open("words.txt", "r") as f:
@@ -10,6 +12,9 @@ with open("words.txt", "r") as f:
 
 class MicrosoftRewards:
     def __init__(self, headless: bool = False, proxy: str = None, session: dict = None):
+        if os.name == "posix" and "DISPLAY" not in os.environ:
+            self.display = Display()
+            self.display.start()
         self.session = session
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.webkit.launch(
@@ -21,7 +26,7 @@ class MicrosoftRewards:
             } if proxy else None
         )
         self.context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value]).get_random_user_agent())
-        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
+        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "other"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()
@@ -77,7 +82,7 @@ class MicrosoftRewards:
     def __search(self, count: int, mobile: bool = False):
         if mobile:
             mobile_context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(operating_systems=[OperatingSystem.ANDROID.value]).get_random_user_agent())
-            mobile_context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
+            mobile_context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "other"] else route.continue_())
             mobile_context.set_default_navigation_timeout(60000)
             mobile_context.set_default_timeout(10000)
             search_page = mobile_context.new_page()
@@ -247,4 +252,7 @@ class MicrosoftRewards:
         return self
 
     def __exit__(self, *args):
+        self.browser.close()
         self.playwright.stop()
+        if os.name == "posix" and "DISPLAY" not in os.environ:
+            self.display.stop()
