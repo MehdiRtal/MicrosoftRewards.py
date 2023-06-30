@@ -6,7 +6,7 @@ from rewards import MicrosoftRewards
 
 
 with open("accounts.json", "r") as f:
-        accounts = json.load(f)
+    accounts = json.load(f)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--headless", action="store_true", default=False)

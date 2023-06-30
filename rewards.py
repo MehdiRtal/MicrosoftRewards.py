@@ -17,13 +17,18 @@ class MicrosoftRewards:
             self.display.start()
         self.session = session
         self.playwright = sync_playwright().start()
+        tmp_proxy = None
+        if proxy:
+            tmp_proxy = {
+                "server": f"http://{proxy}",
+            }
+            if "@" in proxy:
+                tmp_proxy["server"] = f"http://{proxy.split('@')[1]}"
+                tmp_proxy["username"] = proxy.split("@")[0].split(":")[0]
+                tmp_proxy["password"] = proxy.split("@")[0].split(":")[1]
         self.browser = self.playwright.webkit.launch(
             headless=headless,
-            proxy={
-                "server": f"http://{proxy.split('@')[1]}",
-                "username": proxy.split("@")[0].split(":")[0] if "@" in proxy else None,
-                "password": proxy.split("@")[0].split(":")[1] if "@" in proxy else None
-            } if proxy else None
+            proxy=tmp_proxy
         )
         self.context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value]).get_random_user_agent())
         self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "other"] else route.continue_())
