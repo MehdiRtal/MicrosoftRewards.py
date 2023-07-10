@@ -141,47 +141,6 @@ class MicrosoftRewards:
                 "Timezone": 0
             }
         )
-    
-    def __this_or_that(self, url: str):
-        def get_option_decoded(encode_key: str, string: str):
-            t = 0
-            for i, _ in enumerate(string):
-                t += ord(string[i])
-            t += int(encode_key[-2:], 16)
-            return str(t)
-        this_or_that_page = self.context.new_page()
-        this_or_that_page.goto(url)
-        try:
-            this_or_that_page.locator("id=rqStartQuiz").click(timeout=3000)
-        except:
-            pass
-        questions = this_or_that_page.evaluate("_w.rewardsQuizRenderInfo.maxQuestions")
-        current_question = lambda: this_or_that_page.evaluate("_w.rewardsQuizRenderInfo.currentQuestionNumber")
-        for i in range(current_question(), questions+1):
-            while True:
-                if current_question() == i:
-                    break
-            answer = this_or_that_page.evaluate("_w.rewardsQuizRenderInfo.correctAnswer")
-            option1 = this_or_that_page.locator("id=rqAnswerOption0")
-            option2 = this_or_that_page.locator("id=rqAnswerOption1")
-            if get_option_decoded(this_or_that_page.evaluate("_G.IG"), option1.get_attribute("data-option")) == answer:
-                option1.click()
-            else:
-                option2.click()
-            this_or_that_page.wait_for_load_state()
-            this_or_that_page.wait_for_timeout(1000)
-        this_or_that_page.wait_for_timeout(5000)
-        this_or_that_page.close()
-
-    def __abc(self, url: str):
-        abc_page = self.context.new_page()
-        abc_page.goto(url)
-        for i in range(10):
-            abc_page.locator("css=a[class='wk_choicesInstLink']").nth(random.randint(0, 2)).click()
-            abc_page.wait_for_load_state()
-            abc_page.locator(f"id=nextQuestionbtn{str(i)}").click()
-        abc_page.wait_for_timeout(3000)
-        abc_page.close()
 
     def complete_daily_set(self):
         pc_search = self.dashboard["userStatus"]["counters"]["pcSearch"][0]
@@ -196,15 +155,10 @@ class MicrosoftRewards:
         for promotion in daily_set:
             if not promotion["complete"]:
                 if promotion["promotionType"] == "quiz":
-                    if promotion["pointProgressMax"] == 40 or promotion["pointProgressMax"] == 30:
+                    if "PollScenarioId" in promotion["destinationUrl"]:
+                        self.__poll(promotion["offerId"])
+                    else:
                         self.__quiz(promotion["offerId"])
-                    elif promotion["pointProgressMax"] == 50:
-                        self.__this_or_that(promotion["destinationUrl"])
-                    elif promotion["pointProgressMax"] == 10:
-                        if "PollScenarioId" in promotion["destinationUrl"]:
-                            self.__poll(promotion["offerId"])
-                        else:
-                            self.__abc(promotion["destinationUrl"])
                 elif promotion["promotionType"] == "urlreward":
                     self.__url_reward(promotion["destinationUrl"])
 
@@ -213,12 +167,10 @@ class MicrosoftRewards:
         for promotion in more_promotions:
             if not promotion["complete"]:
                 if promotion["promotionType"] == "quiz":
-                    if promotion["pointProgressMax"] == 40 or promotion["pointProgressMax"] == 30:
-                        self.__quiz(promotion["destinationUrl"])
-                    elif promotion["pointProgressMax"] == 50:
-                        self.__this_or_that(promotion["destinationUrl"])
-                    elif promotion["pointProgressMax"] == 10:
-                        self.__abc(promotion["destinationUrl"])
+                    if "PollScenarioId" in promotion["destinationUrl"]:
+                        self.__poll(promotion["offerId"])
+                    else:
+                        self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
                     self.__url_reward(promotion["destinationUrl"])
 
@@ -231,15 +183,10 @@ class MicrosoftRewards:
                 for promotion in child_promotions:
                     if not promotion["complete"] or "appstore" not in promotion["promotionType"]:
                         if promotion["promotionType"] == "quiz":
-                            if promotion["pointProgressMax"] == 40 or promotion["pointProgressMax"] == 30:
-                                self.__quiz(promotion["destinationUrl"])
-                            elif promotion["pointProgressMax"] == 50:
-                                self.__this_or_that(promotion["destinationUrl"])
-                            elif promotion["pointProgressMax"] == 10:
-                                if "PollScenarioId" in promotion["destinationUrl"]:
-                                    self.__poll(promotion["destinationUrl"])
-                                else:
-                                    self.__abc(promotion["destinationUrl"])
+                            if "PollScenarioId" in promotion["destinationUrl"]:
+                                self.__poll(promotion["offerId"])
+                            else:
+                                self.__quiz(promotion["offerId"])
                         elif promotion["promotionType"] == "urlreward":
                             self.__url_reward(promotion["destinationUrl"])
     
