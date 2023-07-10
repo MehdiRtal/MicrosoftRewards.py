@@ -26,15 +26,16 @@ class MicrosoftRewards:
                 tmp_proxy["server"] = f"http://{proxy.split('@')[1]}"
                 tmp_proxy["username"] = proxy.split("@")[0].split(":")[0]
                 tmp_proxy["password"] = proxy.split("@")[0].split(":")[1]
-        self.browser = self.playwright.webkit.launch(
+        self.browser = self.playwright.chromium.launch(
             headless=headless,
             proxy=tmp_proxy
         )
-        self.context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value]).get_random_user_agent())
+        self.context = self.browser.new_context(storage_state=self.session)
         self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "other"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()
+        self.request_context = self.context.request
         self.dashboard = None
     
     def login(self, username: str, password: str):
@@ -82,21 +83,27 @@ class MicrosoftRewards:
             bing_page.wait_for_timeout(5000)
             bing_page.close()
             self.session = self.context.storage_state()
-        self.dashboard = self.page.evaluate("dashboard")
+        self.dashboard = self.request_context.get(
+            "https://rewards.bing.com/api/getuserinfo",
+            params={
+                "type": 1
+            }
+        ).json()["dashboard"]
 
     def __search(self, count: int, mobile: bool = False):
-        if mobile:
-            mobile_context = self.browser.new_context(storage_state=self.session, user_agent=UserAgent(operating_systems=[OperatingSystem.ANDROID.value]).get_random_user_agent())
-            mobile_context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "other"] else route.continue_())
-            mobile_context.set_default_navigation_timeout(60000)
-            mobile_context.set_default_timeout(10000)
-            search_page = mobile_context.new_page()
-        else:
-            search_page = self.context.new_page()
         for _ in range(count):
-            search_page.goto(f"https://bing.com/search?q={random.choice(words)}")
-            search_page.wait_for_timeout(5000)
-        search_page.close()
+            user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
+            if mobile:
+                user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
+            self.request_context.post(
+                "https://www.bing.com/rewardsapp/reportActivity",
+                headers={
+                    "content-type": "application/x-www-form-urlencoded",
+                    "user-agent": user_agent.get_random_user_agent()
+                },
+                data=f"url=https://www.bing.com/search?q={random.choice(words)}"
+            )
+            self.page.wait_for_timeout(3000)
     
     def __url_reward(self, url: str):
         url_reward_page = self.context.new_page()
@@ -179,17 +186,18 @@ class MicrosoftRewards:
             abc_page.locator("css=a[class='wk_choicesInstLink']").nth(random.randint(0, 2)).click()
             abc_page.wait_for_load_state()
             abc_page.locator(f"id=nextQuestionbtn{str(i)}").click()
-        abc_page.wait_for_timeout(5000)
+        abc_page.wait_for_timeout(3000)
         abc_page.close()
 
     def complete_daily_set(self):
         pc_search = self.dashboard["userStatus"]["counters"]["pcSearch"][0]
+        points_per_search = 5 if pc_search["pointProgressMax"] == 50 or pc_search["pointProgressMax"] == 250 else 3
         if not pc_search["complete"]:
-            self.__search(int((pc_search["pointProgressMax"] - pc_search["pointProgress"]) / 5))
-        if self.dashboard["userStatus"]["levelInfo"]["activeLevel"] == "Level2":
+            self.__search(int((pc_search["pointProgressMax"] - pc_search["pointProgress"]) / points_per_search))
+        if "mobileSearch" in self.dashboard["userStatus"]["counters"]:
             mobile_search = self.dashboard["userStatus"]["counters"]["mobileSearch"][0]
             if not mobile_search["complete"]:
-                self.__search(int((mobile_search["pointProgressMax"] - mobile_search["pointProgress"]) / 5), mobile=True)
+                self.__search(int((mobile_search["pointProgressMax"] - mobile_search["pointProgress"]) / points_per_search), mobile=True)
         daily_set = self.dashboard["dailySetPromotions"][datetime.datetime.now().strftime("%m/%d/%Y")]
         for promotion in daily_set:
             if not promotion["complete"]:
