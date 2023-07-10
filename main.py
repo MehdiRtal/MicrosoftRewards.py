@@ -23,8 +23,8 @@ def farm(account):
         ) as rewards:
             rewards.login(account["username"], account["password"])
             rewards.complete_daily_set()
-            # rewards.complete_more_promotions()
-            # rewards.complete_punch_cards()
+            rewards.complete_more_promotions()
+            rewards.complete_punch_cards()
             if "goal" in account:
                 rewards.set_goal(account["goal"])
                 rewards.redeem_goal()
