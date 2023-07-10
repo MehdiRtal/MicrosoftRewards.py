@@ -31,7 +31,7 @@ class MicrosoftRewards:
             proxy=tmp_proxy
         )
         self.context = self.browser.new_context(storage_state=self.session)
-        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "other"] else route.continue_())
+        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()
@@ -80,7 +80,7 @@ class MicrosoftRewards:
             bing_page.goto("https://www.bing.com/rewards/signin")
             bing_page.locator("css=[class='identityOption']").locator("css=a").click()
             bing_page.wait_for_load_state()
-            bing_page.wait_for_timeout(5000)
+            bing_page.wait_for_timeout(3000)
             bing_page.close()
             self.session = self.context.storage_state()
         self.dashboard = self.request_context.get(
@@ -111,42 +111,36 @@ class MicrosoftRewards:
         url_reward_page.wait_for_timeout(5000)
         url_reward_page.close()
     
-    def __poll(self, url: str):
-        poll_page = self.context.new_page()
-        poll_page.goto(url)
-        poll_page.locator(f"id=btoption{random.randint(0,1)}").click()
-        poll_page.wait_for_timeout(5000)
-        poll_page.close()
+    def __poll(self, offer_id: str):
+        self.request_context.post(
+            "https://www.bing.com/bingqa/ReportActivity",
+            headers={
+                "content-type": "application/json"
+            },
+            data = {
+                "UserId": None,
+                "TimeZoneOffset": 0,
+                "OfferId": offer_id,
+                "ActivityCount": 1,
+                "QuestionIndex": "-1"
+            }
+        )
     
-    def __quiz(self, url: str):
-        quiz_page = self.context.new_page()
-        quiz_page.goto(url)
-        try:
-            quiz_page.locator("id=rqStartQuiz").click(timeout=3000)
-        except:
-            pass
-        questions = quiz_page.evaluate("_w.rewardsQuizRenderInfo.maxQuestions")
-        options = quiz_page.evaluate("_w.rewardsQuizRenderInfo.numberOfOptions")
-        current_question = lambda: quiz_page.evaluate("_w.rewardsQuizRenderInfo.currentQuestionNumber")
-        for i in range(current_question(), questions+1):
-            while True:
-                if current_question() == i:
-                    break
-            if options == 4:
-                answer = quiz_page.evaluate("_w.rewardsQuizRenderInfo.correctAnswer")
-                quiz_page.locator(f"css=input[value='{answer}']").click()
-                quiz_page.wait_for_load_state()
-            elif options == 8:
-                answers = []
-                for i in range(8):
-                    if quiz_page.locator(f"id=rqAnswerOption{str(i)}").get_attribute("iscorrectoption").lower() == "true":
-                        answers.append(f"rqAnswerOption{str(i)}")
-                for answer in answers:
-                    quiz_page.locator(f"id={answer}").click()
-                    quiz_page.wait_for_load_state()
-            quiz_page.wait_for_timeout(1000)
-        quiz_page.wait_for_timeout(5000)
-        quiz_page.close()
+    def __quiz(self, offer_id: str):
+        self.request_context.post(
+            "https://www.bing.com/bingqa/ReportActivity",
+            headers={
+                "content-type": "application/json"
+            },
+            data = {
+                "ActivitySubType": "quiz",
+                "ActivityType": "notification",
+                "OfferId": offer_id,
+                "Channel": "Bing.Com",
+                "PartnerId": "BingTrivia",
+                "Timezone": 0
+            }
+        )
     
     def __this_or_that(self, url: str):
         def get_option_decoded(encode_key: str, string: str):
@@ -203,12 +197,12 @@ class MicrosoftRewards:
             if not promotion["complete"]:
                 if promotion["promotionType"] == "quiz":
                     if promotion["pointProgressMax"] == 40 or promotion["pointProgressMax"] == 30:
-                        self.__quiz(promotion["destinationUrl"])
+                        self.__quiz(promotion["offerId"])
                     elif promotion["pointProgressMax"] == 50:
                         self.__this_or_that(promotion["destinationUrl"])
                     elif promotion["pointProgressMax"] == 10:
                         if "PollScenarioId" in promotion["destinationUrl"]:
-                            self.__poll(promotion["destinationUrl"])
+                            self.__poll(promotion["offerId"])
                         else:
                             self.__abc(promotion["destinationUrl"])
                 elif promotion["promotionType"] == "urlreward":
@@ -250,6 +244,15 @@ class MicrosoftRewards:
                             self.__url_reward(promotion["destinationUrl"])
     
     def set_goal(self, product_id: int):
+        request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
+        self.request_context.post(
+            "https://rewards.bing.com/api/switchgoal",
+            headers={
+                "content-type": "application/x-www-form-urlencoded"
+            },
+            data=f"name={product_id}&__RequestVerificationToken={request_verification_token}"
+
+        )
         self.page.goto(f"https://rewards.bing.com/redeem/{str(product_id)}")
         self.page.locator("id=goal-set").click()
     
