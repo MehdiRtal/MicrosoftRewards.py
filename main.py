@@ -5,19 +5,20 @@ import json
 from rewards import MicrosoftRewards
 
 
-with open("accounts.json", "r") as f:
+with open("accounts.json") as f:
     accounts = json.load(f)
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--workers", type=int, default=1)
 parser.add_argument("--headless", action="store_true", default=False)
 parser.add_argument("--session", action="store_true", default=False)
-parser.add_argument("--workers", type=int, default=1)
 args = parser.parse_args()
 
 def farm(account):
     try:
         with MicrosoftRewards(
-            headless=args.headless, proxy=account["proxy"] if "proxy" in account else None,
+            headless=args.headless,
+            proxy=account["proxy"] if "proxy" in account else None,
             session=json.loads(account["session"]) if "session" in account else None
         ) as rewards:
             rewards.login(account["username"], account["password"])
