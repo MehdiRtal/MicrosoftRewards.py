@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, Route
 import random
 from random_user_agent.user_agent import UserAgent
 from random_user_agent.params import SoftwareName, OperatingSystem
@@ -89,6 +89,14 @@ class MicrosoftRewards:
                 "type": 1
             }
         ).json()["dashboard"]
+    
+    def refresh_dashboard(self):
+        self.dashboard = self.request_context.get(
+            "https://rewards.bing.com/api/getuserinfo",
+            params={
+                "type": 1
+            }
+        ).json()["dashboard"]
 
     def __search(self, count: int, mobile: bool = False):
         for _ in range(count):
@@ -106,10 +114,15 @@ class MicrosoftRewards:
             self.page.wait_for_timeout(3000)
     
     def __url_reward(self, url: str):
-        url_reward_page = self.context.new_page()
-        url_reward_page.goto(url)
-        url_reward_page.wait_for_timeout(5000)
-        url_reward_page.close()
+        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
+        self.request_context.post(
+            "https://www.bing.com/rewardsapp/reportActivity",
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "user-agent": user_agent.get_random_user_agent()
+            },
+            data=f"url={url}"
+        )
     
     def __poll(self, offer_id: str):
         self.request_context.post(
@@ -158,7 +171,8 @@ class MicrosoftRewards:
                     if "PollScenarioId" in promotion["destinationUrl"]:
                         self.__poll(promotion["offerId"])
                     else:
-                        self.__quiz(promotion["offerId"])
+                        for _ in range(promotion["pointProgressMax"] / 10):
+                            self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
                     self.__url_reward(promotion["destinationUrl"])
 
@@ -167,9 +181,7 @@ class MicrosoftRewards:
         for promotion in more_promotions:
             if not promotion["complete"]:
                 if promotion["promotionType"] == "quiz":
-                    if "PollScenarioId" in promotion["destinationUrl"]:
-                        self.__poll(promotion["offerId"])
-                    else:
+                    for _ in range(promotion["pointProgressMax"] / 10):
                         self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
                     self.__url_reward(promotion["destinationUrl"])
@@ -186,7 +198,8 @@ class MicrosoftRewards:
                             if "PollScenarioId" in promotion["destinationUrl"]:
                                 self.__poll(promotion["offerId"])
                             else:
-                                self.__quiz(promotion["offerId"])
+                                for _ in range(promotion["pointProgressMax"] / 10):
+                                    self.__quiz(promotion["offerId"])
                         elif promotion["promotionType"] == "urlreward":
                             self.__url_reward(promotion["destinationUrl"])
     
@@ -198,18 +211,26 @@ class MicrosoftRewards:
                 "content-type": "application/x-www-form-urlencoded"
             },
             data=f"name={product_id}&__RequestVerificationToken={request_verification_token}"
-
         )
-        self.page.goto(f"https://rewards.bing.com/redeem/{str(product_id)}")
-        self.page.locator("id=goal-set").click()
     
     def redeem_goal(self):
-        self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId=")
-        self.page.locator("id=goal-redeem").click()
-        self.page.locator("id=redeem-checkout-review-confirm").click()
-        self.page.locator("id=redeem-checkout-challenge-countrycode").select_option(value="212")
-        self.page.locator("id=redeem-checkout-challenge-fullnumber").type("test")
-
+        self.refresh_dashboard()
+        user_points = self.dashboard["userStatus"]["availablePoints"]
+        goal = self.dashboard["userStatus"]["redeemGoal"]
+        goal_points = goal["discountedPrice"]
+        goal_id = goal["goalId"]
+        if user_points < goal_points:
+            self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
+            self.page.locator("id=goal-redeem").click()
+            self.page.locator("id=redeem-checkout-review-confirm").click()
+            self.page.locator("id=redeem-checkout-challenge-countrycode").select_option(value="212")
+            self.page.locator("id=redeem-checkout-challenge-fullnumber").type("691617956")
+            def handle(route: Route):
+                response = route.fetch()
+                body = response.text()
+                body.replace("%7B0%7D", "%7B34%7D")
+                route.fulfill(response=response, body=body)
+            self.page.route("https://rewards.bing.com/redeem/checkout/verify**", handle)
 
     def __enter__(self):
         return self
