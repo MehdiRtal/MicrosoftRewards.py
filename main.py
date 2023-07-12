@@ -1,6 +1,7 @@
 from multiprocessing.pool import ThreadPool
 import argparse
 import json
+from loguru import logger
 
 from rewards import MicrosoftRewards
 
@@ -29,7 +30,7 @@ def farm(account):
                 rewards.set_goal(account["goal"])
                 rewards.redeem_goal()
     except Exception as e:
-        print(e)
+        logger.exception(e)
     else:
         if args.session:
             account["session"] = json.dumps(rewards.session)
@@ -37,5 +38,6 @@ def farm(account):
                 json.dump(accounts, f, indent=4)
 
 if __name__ == "__main__":
+    logger.add("logs.txt", backtrace=True, diagnose=True)
     with ThreadPool(args.workers) as pool:
         pool.map(farm, accounts)
