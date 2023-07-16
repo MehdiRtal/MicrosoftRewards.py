@@ -37,7 +37,7 @@ class MicrosoftRewards:
         self.page = self.context.new_page()
         self.request_context = self.context.request
         self.dashboard = None
-    
+
     def login(self, username: str, password: str):
         self.page.goto("https://rewards.bing.com/")
         if not self.session:
@@ -83,13 +83,14 @@ class MicrosoftRewards:
             bing_page.wait_for_timeout(3000)
             bing_page.close()
             self.session = self.context.storage_state()
+        self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
         self.dashboard = self.request_context.get(
             "https://rewards.bing.com/api/getuserinfo",
             params={
                 "type": 1
             }
         ).json()["dashboard"]
-    
+
     def refresh_dashboard(self):
         self.dashboard = self.request_context.get(
             "https://rewards.bing.com/api/getuserinfo",
@@ -111,47 +112,46 @@ class MicrosoftRewards:
                 },
                 data=f"url=https://www.bing.com/search?q={random.choice(words)}"
             )
-            self.page.wait_for_timeout(3000)
-    
-    def __url_reward(self, url: str):
+
+    def __url_reward(self, offer_id: str, hash: str):
         user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
         self.request_context.post(
-            "https://www.bing.com/rewardsapp/reportActivity",
+            "https://rewards.bing.com/api/reportactivity",
             headers={
                 "content-type": "application/x-www-form-urlencoded",
                 "user-agent": user_agent.get_random_user_agent()
             },
-            data=f"url={url}"
+            data=f"id={offer_id}&hash={hash}&timeZone=0&activityAmount=1&dbs=0&__RequestVerificationToken={self.request_verification_token}"
         )
-    
+
     def __poll(self, offer_id: str):
         self.request_context.post(
-            "https://www.bing.com/bingqa/ReportActivity",
+            "https://www.bing.com/msrewards/api/v1/ReportActivity",
             headers={
                 "content-type": "application/json"
             },
-            data = {
-                "UserId": None,
-                "TimeZoneOffset": 0,
-                "OfferId": offer_id,
-                "ActivityCount": 1,
-                "QuestionIndex": "-1"
-            }
-        )
-    
-    def __quiz(self, offer_id: str):
-        self.request_context.post(
-            "https://www.bing.com/bingqa/ReportActivity",
-            headers={
-                "content-type": "application/json"
-            },
-            data = {
+            data={
                 "ActivitySubType": "quiz",
                 "ActivityType": "notification",
                 "OfferId": offer_id,
                 "Channel": "Bing.Com",
                 "PartnerId": "BingTrivia",
                 "Timezone": 0
+            }
+        )
+
+    def __quiz(self, offer_id: str):
+        self.request_context.post(
+            "https://www.bing.com/bingqa/ReportActivity",
+            headers={
+                "content-type": "application/json"
+            },
+            data={
+                "OfferId": offer_id,
+                "ActivityCount": 1,
+                "QuestionIndex": "-1",
+                "UserId": None,
+                "TimeZoneOffset": 0,
             }
         )
 
@@ -166,25 +166,25 @@ class MicrosoftRewards:
                 self.__search(int((mobile_search["pointProgressMax"] - mobile_search["pointProgress"]) / points_per_search), mobile=True)
         daily_set = self.dashboard["dailySetPromotions"][datetime.datetime.now().strftime("%m/%d/%Y")]
         for promotion in daily_set:
-            if not promotion["complete"]:
+            if not promotion["complete"] and promotion["pointProgressMax"] > 0:
                 if promotion["promotionType"] == "quiz":
                     if "PollScenarioId" in promotion["destinationUrl"]:
                         self.__poll(promotion["offerId"])
                     else:
-                        for _ in range(promotion["pointProgressMax"] / 10):
+                        for _ in range(int(promotion["pointProgressMax"] / 10)):
                             self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
-                    self.__url_reward(promotion["destinationUrl"])
+                    self.__url_reward(promotion["offerId"], promotion["hash"])
 
     def complete_more_promotions(self):
         more_promotions = self.dashboard["morePromotions"]
         for promotion in more_promotions:
-            if not promotion["complete"]:
+            if not promotion["complete"] and promotion["pointProgressMax"] > 0:
                 if promotion["promotionType"] == "quiz":
-                    for _ in range(promotion["pointProgressMax"] / 10):
+                    for _ in range(int(promotion["pointProgressMax"] / 10)):
                         self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
-                    self.__url_reward(promotion["destinationUrl"])
+                    self.__url_reward(promotion["offerId"], promotion["hash"])
 
     def complete_punch_cards(self):
         punch_cards = self.dashboard["punchCards"]
@@ -198,21 +198,20 @@ class MicrosoftRewards:
                             if "PollScenarioId" in promotion["destinationUrl"]:
                                 self.__poll(promotion["offerId"])
                             else:
-                                for _ in range(promotion["pointProgressMax"] / 10):
+                                for _ in range(int(promotion["pointProgressMax"] / 10)):
                                     self.__quiz(promotion["offerId"])
                         elif promotion["promotionType"] == "urlreward":
-                            self.__url_reward(promotion["destinationUrl"])
-    
+                            self.__url_reward(promotion["offerId"], promotion["hash"])
+
     def set_goal(self, product_id: int):
-        request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
         self.request_context.post(
             "https://rewards.bing.com/api/switchgoal",
             headers={
                 "content-type": "application/x-www-form-urlencoded"
             },
-            data=f"name={product_id}&__RequestVerificationToken={request_verification_token}"
+            data=f"name={product_id}&__RequestVerificationToken={self.request_verification_token}"
         )
-    
+
     def redeem_goal(self):
         self.refresh_dashboard()
         user_points = self.dashboard["userStatus"]["availablePoints"]
