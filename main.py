@@ -22,15 +22,53 @@ def farm(account):
             proxy=account["proxy"] if "proxy" in account else None,
             session=json.loads(account["session"]) if "session" in account else None
         ) as rewards:
+            logger.info(f"Logging in to {account['username']}")
             rewards.login(account["username"], account["password"])
-            rewards.complete_daily_set()
-            rewards.complete_more_promotions()
-            rewards.complete_punch_cards()
+            logger.success(f"Logged in to {account['username']}")
+            try:
+                logger.info(f"Completing daily set for {account['username']}")
+                rewards.complete_daily_set()
+            except Exception as e:
+                logger.exception(e)
+                logger.error(f"Failed to complete daily set for {account['username']}")
+            else:
+                logger.success(f"Completed daily set for {account['username']}")
+            try:
+                logger.info(f"Completing more promotions for {account['username']}")
+                rewards.complete_more_promotions()
+            except Exception as e:
+                logger.exception(e)
+                logger.error(f"Failed to complete more promotions for {account['username']}")
+            else:
+                logger.success(f"Completed more promotions for {account['username']}")
+            try:
+                logger.info(f"Completing punch cards for {account['username']}")
+                rewards.complete_punch_cards()
+            except Exception as e:
+                logger.exception(e)
+                logger.error(f"Failed to complete punch cards for {account['username']}")
+            else:
+                logger.success(f"Completed punch cards for {account['username']}")
             if "goal" in account:
-                rewards.set_goal(account["goal"])
-                rewards.redeem_goal()
+                try:
+                    logger.info(f"Setting goal for {account['username']}")
+                    rewards.set_goal(account["goal"])
+                except Exception as e:
+                    logger.exception(e)
+                    logger.error(f"Failed to set goal for {account['username']}")
+                else:
+                    logger.success(f"Set goal for {account['username']}")
+                try:
+                    logger.info(f"Redeeming goal for {account['username']}")
+                    rewards.redeem_goal()
+                except Exception as e:
+                    logger.exception(e)
+                    logger.error(f"Failed to redeem goal for {account['username']}")
+                else:
+                    logger.success(f"Redeemed goal for {account['username']}")
     except Exception as e:
         logger.exception(e)
+        logger.error(f"Failed to farm {account['username']}")
     else:
         if args.session:
             account["session"] = json.dumps(rewards.session)
