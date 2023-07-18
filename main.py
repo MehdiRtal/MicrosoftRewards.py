@@ -26,6 +26,9 @@ def farm(account):
                 rewards.login(session=json.loads(account["session"]))
             else:
                 rewards.login(username=account["username"], password=account["password"])
+                account["session"] = json.dumps(rewards.session)
+                with open("accounts.json", "w") as f:
+                    json.dump(accounts, f, indent=4)
             logger.success(f"Logged in to {account['username']}")
             try:
                 logger.info(f"Completing daily set for {account['username']}")
@@ -72,9 +75,7 @@ def farm(account):
         logger.exception(e)
         logger.error(f"Failed to farm {account['username']}")
     else:
-        account["session"] = json.dumps(rewards.session)
-        with open("accounts.json", "w") as f:
-            json.dump(accounts, f, indent=4)
+        
         logger.success(f"Successfully farmed {account['username']}")
 
 if __name__ == "__main__":
