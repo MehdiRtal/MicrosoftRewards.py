@@ -201,13 +201,15 @@ class MicrosoftRewards:
                             self.__url_reward(promotion["offerId"], promotion["hash"])
 
     def set_goal(self, product_id: str):
-        self.request_context.post(
+        r = self.request_context.post(
             "https://rewards.bing.com/api/switchgoal",
             headers={
                 "content-type": "application/x-www-form-urlencoded"
             },
             data=f"name={product_id}&__RequestVerificationToken={self.request_verification_token}"
         )
+        if r.status != 200:
+            raise Exception()
 
     def redeem_goal(self):
         self.refresh_dashboard()
@@ -217,7 +219,7 @@ class MicrosoftRewards:
         goal_id = goal["name"]
         goal_provider = goal["provider"]
         if user_points < goal_points:
-            raise Exception("You don't have enough points to redeem this goal.")
+            raise Exception()
         self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
         green_id = self.page.locator("css=input[name='greenId']").get_attribute("value")
         request_id = self.page.locator("css=input[name='challenge.RequestId']").get_attribute("value")
@@ -226,10 +228,10 @@ class MicrosoftRewards:
             headers={
                 "content-type": "application/x-www-form-urlencoded"
             },
-            data=f"productId={goal_id}&provider={goal_provider}&challenge.RequestId={request_id}&challenge.TrackingId=&challenge.ChallengeMessageTemplate=Your+Microsoft+Rewards+confirmation+code+is+%7B34%7D&challenge.State=CreateChallenge&expectedGreenId={green_id}&challenge.SendingType=SMS&challenge.Phone.CountryCode=212&challenge.Phone.Number=685967812&__RequestVerificationToken={self.request_verification_token}"
+            data=f"productId={goal_id}&provider={goal_provider}&challenge.RequestId={request_id}&challenge.TrackingId=&challenge.ChallengeMessageTemplate=Your+Microsoft+Rewards+confirmation+code+is+%7B34%7D&challenge.State=CreateChallenge&expectedGreenId={green_id}&challenge.SendingType=SMS&challenge.Phone.CountryCode=1&challenge.Phone.Number=2034591805&__RequestVerificationToken={self.request_verification_token}"
         )
         if r.status != 200:
-            raise Exception("Failed to redeem goal.")
+            raise Exception()
 
     def __enter__(self):
         return self

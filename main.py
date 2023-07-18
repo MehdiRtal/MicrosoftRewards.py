@@ -2,6 +2,8 @@ from multiprocessing.pool import ThreadPool
 import argparse
 import json
 from loguru import logger
+import pickle
+import base64
 
 from rewards import MicrosoftRewards
 
@@ -23,10 +25,10 @@ def farm(account):
         ) as rewards:
             logger.info(f"Logging in to {account['username']}")
             if args.session and "session" in account:
-                rewards.login(session=json.loads(account["session"]))
+                rewards.login(session=pickle.loads(base64.b64decode(account["session"])))
             else:
                 rewards.login(username=account["username"], password=account["password"])
-                account["session"] = json.dumps(rewards.session)
+                account["session"] = base64.b64encode(pickle.dumps(rewards.session)).decode()
                 with open("accounts.json", "w") as f:
                     json.dump(accounts, f, indent=4)
             logger.success(f"Logged in to {account['username']}")
