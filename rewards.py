@@ -215,18 +215,19 @@ class MicrosoftRewards:
         goal = self.dashboard["userStatus"]["redeemGoal"]
         goal_points = goal["discountedPrice"]
         goal_id = goal["goalId"]
-        if user_points < goal_points:
-            self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
-            self.page.locator("id=goal-redeem").click()
-            self.page.locator("id=redeem-checkout-review-confirm").click()
-            self.page.locator("id=redeem-checkout-challenge-countrycode").select_option(value="212")
-            self.page.locator("id=redeem-checkout-challenge-fullnumber").type("691617956")
-            def handle(route: Route):
-                response = route.fetch()
-                body = response.text()
-                body.replace("%7B0%7D", "%7B34%7D")
-                route.fulfill(response=response, body=body)
-            self.page.route("https://rewards.bing.com/redeem/checkout/verify**", handle)
+        if user_points > goal_points:
+            raise Exception("You don't have enough points to redeem this goal.")
+        self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
+        self.page.locator("id=goal-redeem").click()
+        self.page.locator("id=redeem-checkout-review-confirm").click()
+        self.page.locator("id=redeem-checkout-challenge-countrycode").select_option(value="212")
+        self.page.locator("id=redeem-checkout-challenge-fullnumber").type("691617956")
+        def handle(route: Route):
+            response = route.fetch()
+            body = response.text()
+            body.replace("%7B0%7D", "%7B34%7D")
+            route.fulfill(response=response, body=body)
+        self.page.route("https://rewards.bing.com/redeem/checkout/verify**", handle)
 
     def __enter__(self):
         return self

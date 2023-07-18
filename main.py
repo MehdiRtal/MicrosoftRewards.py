@@ -75,7 +75,6 @@ def farm(account):
         logger.exception(e)
         logger.error(f"Failed to farm {account['username']}")
     else:
-        
         logger.success(f"Successfully farmed {account['username']}")
 
 if __name__ == "__main__":
