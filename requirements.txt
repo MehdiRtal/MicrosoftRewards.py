@@ -2,3 +2,4 @@ playwright
 random_user_agent
 pyvirtualdisplay
 loguru
+bs4

@@ -5,6 +5,7 @@ from random_user_agent.params import SoftwareName, OperatingSystem
 from pyvirtualdisplay import Display
 import datetime
 import os
+from bs4 import BeautifulSoup
 
 
 with open("words.txt", "r") as f:
@@ -259,7 +260,10 @@ class MicrosoftRewards:
             },
             data=f"__RequestVerificationToken={self.request_verification_token}"
         )
-        print(r.text())
+        if r.status != 200:
+            raise Exception()
+        soup = BeautifulSoup(r.text(), "html.parser")
+        print(soup.find("div", {"class": "tango-credential-value"}))
 
     def __enter__(self):
         return self
