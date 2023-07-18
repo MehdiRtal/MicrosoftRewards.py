@@ -58,16 +58,8 @@ def farm(account):
                 logger.success(f"Completed punch cards for {account['username']}")
             if "goal" in account:
                 try:
-                    logger.info(f"Setting goal for {account['username']}")
-                    rewards.set_goal(account["goal"])
-                except Exception as e:
-                    logger.exception(e)
-                    logger.error(f"Failed to set goal for {account['username']}")
-                else:
-                    logger.success(f"Set goal for {account['username']}")
-                try:
                     logger.info(f"Redeeming goal for {account['username']}")
-                    rewards.redeem_goal()
+                    rewards.redeem_goal(account["goal"])
                 except Exception as e:
                     logger.exception(e)
                     logger.error(f"Failed to redeem goal for {account['username']}")

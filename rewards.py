@@ -200,31 +200,47 @@ class MicrosoftRewards:
                         elif promotion["promotionType"] == "urlreward":
                             self.__url_reward(promotion["offerId"], promotion["hash"])
 
-    def set_goal(self, product_id: str):
-        r = self.request_context.post(
-            "https://rewards.bing.com/api/switchgoal",
-            headers={
-                "content-type": "application/x-www-form-urlencoded"
-            },
-            data=f"name={product_id}&__RequestVerificationToken={self.request_verification_token}"
-        )
-        if r.status != 200:
-            raise Exception()
-
-    def redeem_goal(self):
-        self.refresh_dashboard()
-        user_points = self.dashboard["userStatus"]["availablePoints"]
-        goal = self.dashboard["userStatus"]["redeemGoal"]
-        goal_points = goal["discountedPrice"]
-        goal_id = goal["name"]
-        goal_provider = goal["provider"]
-        if user_points < goal_points:
-            raise Exception()
+    def redeem_goal(self, goal_id: str):
+        self.catalog = self.request_context.get(
+            "https://rewards.bing.com/api/getuserinfo",
+            params={
+                "type": 8
+            }
+        ).json()["catalog"]
+        user_points = self.catalog["availablePoints"]
+        params = {
+            "rewardsDl": 95,
+            "rewardsDt": -200
+        }
+        if ":" in goal_id:
+            goal_count = int(goal_id.split(":")[1])
+            for item in self.catalog["showcaseItems"]:
+                if item["name"] == goal_id.split(":")[0]:
+                    order_count = int(user_points / item["variableItemConfigPointsToCurrencyConversionRatio"])
+                    if goal_count >= 0:
+                        if goal_count < item["variableRedemptionItemMin"] and goal_count < order_count:
+                            raise Exception()
+                        order_count = goal_count
+                    elif goal_count == -1:
+                        if order_count < item["variableRedemptionItemMin"]:
+                            raise Exception()
+                    goal_provider = item["provider"]
+                    params.update({"variableAmount": order_count})
+                    break
+        else:
+            for item in self.catalog["catalogItems"]:
+                if item["name"] == goal_id:
+                    goal_points = item["discountedPrice"]
+                    if user_points < goal_points:
+                        raise Exception()
+                    goal_provider = item["provider"]
+                    break
         self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
         green_id = self.page.locator("css=input[name='greenId']").get_attribute("value")
         request_id = self.page.locator("css=input[name='challenge.RequestId']").get_attribute("value")
         r = self.request_context.post(
-            "https://rewards.bing.com/redeem/checkout/verify?rewardsDl=95&rewardsDt=-200",
+            "https://rewards.bing.com/redeem/checkout/verify",
+            params=params,
             headers={
                 "content-type": "application/x-www-form-urlencoded"
             },
@@ -232,6 +248,18 @@ class MicrosoftRewards:
         )
         if r.status != 200:
             raise Exception()
+        r = self.request_context.post(
+            "https://rewards.bing.com/redeem/orderdetails",
+            params={
+                "orderId": request_id,
+                "sku": goal_id
+            },
+            headers={
+                "content-type": "application/x-www-form-urlencoded"
+            },
+            data=f"__RequestVerificationToken={self.request_verification_token}"
+        )
+        print(r.text())
 
     def __enter__(self):
         return self
