@@ -30,12 +30,12 @@ class MicrosoftRewards:
             proxy=tmp_proxy
         )
         self.context = self.browser.new_context()
+        self.request_context = self.context.request
         self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()
         self.session = None
-        self.request_context = self.context.request
         self.dashboard = None
 
     def login(self, username: str = None, password: str = None, session: dict = None):
@@ -86,12 +86,7 @@ class MicrosoftRewards:
             bing_page.close()
             self.session = self.context.cookies()
         self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
-        self.dashboard = self.request_context.get(
-            "https://rewards.bing.com/api/getuserinfo",
-            params={
-                "type": 1
-            }
-        ).json()["dashboard"]
+        self.refresh_dashboard()
 
     def refresh_dashboard(self):
         self.dashboard = self.request_context.get(
