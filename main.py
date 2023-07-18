@@ -19,11 +19,13 @@ def farm(account):
     try:
         with MicrosoftRewards(
             headless=args.headless,
-            proxy=account["proxy"] if "proxy" in account else None,
-            session=json.loads(account["session"]) if "session" in account else None
+            proxy=account["proxy"] if "proxy" in account else None
         ) as rewards:
             logger.info(f"Logging in to {account['username']}")
-            rewards.login(account["username"], account["password"])
+            if args.session and "session" in account:
+                rewards.login(session=json.loads(account["session"]))
+            else:
+                rewards.login(username=account["username"], password=account["password"])
             logger.success(f"Logged in to {account['username']}")
             try:
                 logger.info(f"Completing daily set for {account['username']}")
@@ -70,10 +72,10 @@ def farm(account):
         logger.exception(e)
         logger.error(f"Failed to farm {account['username']}")
     else:
-        if args.session:
-            account["session"] = json.dumps(rewards.session)
-            with open("accounts.json", "w") as f:
-                json.dump(accounts, f, indent=4)
+        account["session"] = json.dumps(rewards.session)
+        with open("accounts.json", "w") as f:
+            json.dump(accounts, f, indent=4)
+        logger.success(f"Successfully farmed {account['username']}")
 
 if __name__ == "__main__":
     logger.add("logs.txt", backtrace=True, diagnose=True)

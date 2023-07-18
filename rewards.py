@@ -11,11 +11,10 @@ with open("words.txt", "r") as f:
     words = f.read().splitlines()
 
 class MicrosoftRewards:
-    def __init__(self, headless: bool = False, proxy: str = None, session: dict = None):
+    def __init__(self, headless: bool = False, proxy: str = None):
         if os.name == "posix" and "DISPLAY" not in os.environ:
             self.display = Display()
             self.display.start()
-        self.session = session
         self.playwright = sync_playwright().start()
         tmp_proxy = None
         if proxy:
@@ -30,17 +29,20 @@ class MicrosoftRewards:
             headless=headless,
             proxy=tmp_proxy
         )
-        self.context = self.browser.new_context(storage_state=self.session)
+        self.context = self.browser.new_context()
         self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()
+        self.session = None
         self.request_context = self.context.request
         self.dashboard = None
 
-    def login(self, username: str, password: str):
+    def login(self, username: str = None, password: str = None, session: dict = None):
+        if session:
+            self.page.context.add_cookies(session)
         self.page.goto("https://rewards.bing.com/")
-        if not self.session:
+        if username and password:
             self.page.locator("id=i0116").type(username)
             self.page.locator("id=idSIButton9").click()
             error = self.page.locator("id=usernameError")
@@ -82,7 +84,7 @@ class MicrosoftRewards:
             bing_page.wait_for_load_state()
             bing_page.wait_for_timeout(3000)
             bing_page.close()
-            self.session = self.context.storage_state()
+            self.session = self.context.cookies()
         self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
         self.dashboard = self.request_context.get(
             "https://rewards.bing.com/api/getuserinfo",
