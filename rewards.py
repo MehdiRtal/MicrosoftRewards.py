@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright, Route
+from playwright.sync_api import sync_playwright
 import random
 from random_user_agent.user_agent import UserAgent
 from random_user_agent.params import SoftwareName, OperatingSystem
@@ -200,7 +200,7 @@ class MicrosoftRewards:
                         elif promotion["promotionType"] == "urlreward":
                             self.__url_reward(promotion["offerId"], promotion["hash"])
 
-    def set_goal(self, product_id: int):
+    def set_goal(self, product_id: str):
         self.request_context.post(
             "https://rewards.bing.com/api/switchgoal",
             headers={
@@ -214,20 +214,22 @@ class MicrosoftRewards:
         user_points = self.dashboard["userStatus"]["availablePoints"]
         goal = self.dashboard["userStatus"]["redeemGoal"]
         goal_points = goal["discountedPrice"]
-        goal_id = goal["goalId"]
-        if user_points > goal_points:
+        goal_id = goal["name"]
+        goal_provider = goal["provider"]
+        if user_points < goal_points:
             raise Exception("You don't have enough points to redeem this goal.")
         self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
-        self.page.locator("id=goal-redeem").click()
-        self.page.locator("id=redeem-checkout-review-confirm").click()
-        self.page.locator("id=redeem-checkout-challenge-countrycode").select_option(value="212")
-        self.page.locator("id=redeem-checkout-challenge-fullnumber").type("691617956")
-        def handle(route: Route):
-            response = route.fetch()
-            body = response.text()
-            body.replace("%7B0%7D", "%7B34%7D")
-            route.fulfill(response=response, body=body)
-        self.page.route("https://rewards.bing.com/redeem/checkout/verify**", handle)
+        green_id = self.page.locator("css=input[name='greenId']").get_attribute("value")
+        request_id = self.page.locator("css=input[name='challenge.RequestId']").get_attribute("value")
+        r = self.request_context.post(
+            "https://rewards.bing.com/redeem/checkout/verify?rewardsDl=95&rewardsDt=-200",
+            headers={
+                "content-type": "application/x-www-form-urlencoded"
+            },
+            data=f"productId={goal_id}&provider={goal_provider}&challenge.RequestId={request_id}&challenge.TrackingId=&challenge.ChallengeMessageTemplate=Your+Microsoft+Rewards+confirmation+code+is+%7B34%7D&challenge.State=CreateChallenge&expectedGreenId={green_id}&challenge.SendingType=SMS&challenge.Phone.CountryCode=212&challenge.Phone.Number=685967812&__RequestVerificationToken={self.request_verification_token}"
+        )
+        if r.status != 200:
+            raise Exception("Failed to redeem goal.")
 
     def __enter__(self):
         return self
