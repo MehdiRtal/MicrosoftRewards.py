@@ -48,7 +48,7 @@ class MicrosoftRewards:
             self.page.locator("id=idSIButton9").click()
             error = self.page.locator("id=usernameError")
             try:
-                error.wait_for(state="attached", timeout=3000)
+                error.wait_for(state="attached", timeout=5000)
             except:
                 pass
             else:
@@ -58,7 +58,7 @@ class MicrosoftRewards:
             self.page.wait_for_load_state()
             error = self.page.locator("id=passwordError")
             try:
-                error.wait_for(state="attached", timeout=3000)
+                error.wait_for(state="attached", timeout=5000)
             except:
                 pass
             else:
@@ -67,18 +67,24 @@ class MicrosoftRewards:
             self.page.wait_for_load_state()
             error = self.page.locator("id=iSelectProofTitle")
             try:
-                error.wait_for(state="attached", timeout=3000)
+                error.wait_for(state="attached", timeout=5000)
             except:
                 pass
             else:
                 raise Exception(error.inner_text())
             error = self.page.locator("id=error").locator("css=h1")
             try:
-                error.wait_for(state="attached", timeout=3000)
+                error.wait_for(state="attached", timeout=5000)
             except:
                 pass
             else:
                 raise Exception(error.inner_text())
+            try:
+                self.page.wait_for_url("https://rewards.bing.com/welcome", timeout=5000)
+            except:
+                pass
+            else:
+                self.page.goto("https://rewards.bing.com/createuser")
             bing_page = self.context.new_page()
             bing_page.goto("https://www.bing.com/rewards/signin")
             bing_page.locator("css=[class='identityOption']").locator("css=a").click()
@@ -214,9 +220,10 @@ class MicrosoftRewards:
             "rewardsDt": -200
         }
         if ":" in goal_id:
+            goal_id = goal_id.split(":")[0]
             goal_count = int(goal_id.split(":")[1])
             for item in self.catalog["showcaseItems"]:
-                if item["name"] == goal_id.split(":")[0]:
+                if item["name"] == goal_id:
                     order_count = int(user_points / item["variableItemConfigPointsToCurrencyConversionRatio"])
                     if goal_count >= 0:
                         if goal_count < item["variableRedemptionItemMin"] and goal_count < order_count:
@@ -264,6 +271,7 @@ class MicrosoftRewards:
             raise Exception()
         soup = BeautifulSoup(r.text(), "html.parser")
         print(soup.find("div", {"class": "tango-credential-value"}))
+        print(soup.find("a").get("href"))
 
     def __enter__(self):
         return self
