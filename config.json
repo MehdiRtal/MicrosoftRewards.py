@@ -1,0 +1,6 @@
+{
+    "workers": 1,
+    "headless": false,
+    "session": true,
+    "goal": "000800000000"
+}

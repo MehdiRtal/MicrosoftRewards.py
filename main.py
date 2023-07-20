@@ -1,27 +1,38 @@
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor
 import argparse
 import json
 from loguru import logger
 import pickle
+import os
 import base64
+import random
 
 from rewards import MicrosoftRewards
 
 
-with open("accounts.json") as f:
+accounts_path = os.path.join(os.path.dirname(__file__), "accounts.json")
+proxies_path = os.path.join(os.path.dirname(__file__), "proxies.txt")
+
+with open(os.path.join(os.path.dirname(__file__), "config.json")) as f:
+    config = json.load(f)
+with open(accounts_path) as f:
     accounts = json.load(f)
+with open(proxies_path) as f:
+    proxies = f.read().splitlines()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--workers", type=int, default=1)
-parser.add_argument("--headless", action="store_true", default=False)
-parser.add_argument("--session", action="store_true", default=False)
+parser.add_argument("--workers", type=int, default=config["workers"])
+parser.add_argument("--headless", action="store_true", default=config["headless"])
+parser.add_argument("--session", action="store_true", default=config["session"])
+parser.add_argument("--goal", default=config["goal"])
 args = parser.parse_args()
 
 def farm(account):
     try:
+        proxy = account["proxy"] if "proxy" in account else random.choice(proxies) if proxies else None
         with MicrosoftRewards(
             headless=args.headless,
-            proxy=account["proxy"] if "proxy" in account else None
+            proxy=proxy
         ) as rewards:
             logger.info(f"Logging in to {account['username']}")
             if args.session and "session" in account:
@@ -29,8 +40,16 @@ def farm(account):
             else:
                 rewards.login(username=account["username"], password=account["password"])
                 account["session"] = base64.b64encode(pickle.dumps(rewards.session)).decode()
-                with open("accounts.json", "w") as f:
+                with open(accounts_path, "w") as f:
                     json.dump(accounts, f, indent=4)
+            if "proxy" not in account:
+                account["proxy"] = proxy
+                with open(accounts_path, "w") as f:
+                    json.dump(accounts, f, indent=4)
+                if proxy in proxies:
+                    proxies.remove(proxy)
+                    with open(proxies_path, "w") as f:
+                        f.write("\n".join(proxies))
             logger.success(f"Logged in to {account['username']}")
             try:
                 logger.info(f"Completing daily set for {account['username']}")
@@ -56,14 +75,18 @@ def farm(account):
                 logger.error(f"Failed to complete punch cards for {account['username']}")
             else:
                 logger.success(f"Completed punch cards for {account['username']}")
-            if "goal" in account:
+            if args.goal:
                 try:
                     logger.info(f"Redeeming goal for {account['username']}")
-                    rewards.redeem_goal(account["goal"])
+                    rewards.redeem_goal(args.goal)
                 except Exception as e:
                     logger.exception(e)
                     logger.error(f"Failed to redeem goal for {account['username']}")
                 else:
+                    with open(os.path.join(os.path.dirname(__file__), "orders.json"), "w+") as f:
+                        orders = json.load(f) if f.read() else []
+                        orders.append(rewards.order)
+                        json.dump(orders, f, indent=4)
                     logger.success(f"Redeemed goal for {account['username']}")
     except Exception as e:
         logger.exception(e)
@@ -73,5 +96,6 @@ def farm(account):
 
 if __name__ == "__main__":
     logger.add("logs.txt", backtrace=True, diagnose=True)
-    with ThreadPool(args.workers) as pool:
-        pool.map(farm, accounts)
+    with ThreadPoolExecutor(args.workers) as executor:
+        for account in accounts:
+            executor.submit(farm, account=account)

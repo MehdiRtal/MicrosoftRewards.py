@@ -38,6 +38,7 @@ class MicrosoftRewards:
         self.page = self.context.new_page()
         self.session = None
         self.dashboard = None
+        self.order = None
 
     def login(self, username: str = None, password: str = None, session: dict = None):
         if session:
@@ -89,7 +90,7 @@ class MicrosoftRewards:
             bing_page.goto("https://www.bing.com/rewards/signin")
             bing_page.locator("css=[class='identityOption']").locator("css=a").click()
             bing_page.wait_for_load_state()
-            bing_page.wait_for_timeout(3000)
+            bing_page.wait_for_timeout(5000)
             bing_page.close()
             self.session = self.context.cookies()
         self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
@@ -215,40 +216,22 @@ class MicrosoftRewards:
             }
         ).json()["catalog"]
         user_points = self.catalog["availablePoints"]
-        params = {
-            "rewardsDl": 95,
-            "rewardsDt": -200
-        }
-        if ":" in goal_id:
-            goal_id = goal_id.split(":")[0]
-            goal_count = int(goal_id.split(":")[1])
-            for item in self.catalog["showcaseItems"]:
-                if item["name"] == goal_id:
-                    order_count = int(user_points / item["variableItemConfigPointsToCurrencyConversionRatio"])
-                    if goal_count >= 0:
-                        if goal_count < item["variableRedemptionItemMin"] and goal_count < order_count:
-                            raise Exception()
-                        order_count = goal_count
-                    elif goal_count == -1:
-                        if order_count < item["variableRedemptionItemMin"]:
-                            raise Exception()
-                    goal_provider = item["provider"]
-                    params.update({"variableAmount": order_count})
-                    break
-        else:
-            for item in self.catalog["catalogItems"]:
-                if item["name"] == goal_id:
-                    goal_points = item["discountedPrice"]
-                    if user_points < goal_points:
-                        raise Exception()
-                    goal_provider = item["provider"]
-                    break
+        for item in self.catalog["catalogItems"]:
+            if item["name"] == goal_id:
+                goal_points = item["discountedPrice"]
+                if user_points < goal_points:
+                    raise Exception()
+                goal_provider = item["provider"]
+                break
         self.page.goto(f"https://rewards.bing.com/redeem/checkout?productId={goal_id}")
         green_id = self.page.locator("css=input[name='greenId']").get_attribute("value")
         request_id = self.page.locator("css=input[name='challenge.RequestId']").get_attribute("value")
         r = self.request_context.post(
             "https://rewards.bing.com/redeem/checkout/verify",
-            params=params,
+            params={
+                "rewardsDl": 95,
+                "rewardsDt": -200
+            },
             headers={
                 "content-type": "application/x-www-form-urlencoded"
             },
@@ -270,8 +253,7 @@ class MicrosoftRewards:
         if r.status != 200:
             raise Exception()
         soup = BeautifulSoup(r.text(), "html.parser")
-        print(soup.find("div", {"class": "tango-credential-value"}))
-        print(soup.find("a").get("href"))
+        self.order = {"orderId": request_id, "securityCode": soup.find("div", {"class": "tango-credential-value"}), "redeemUrl": soup.find("a").get("href")}
 
     def __enter__(self):
         return self
