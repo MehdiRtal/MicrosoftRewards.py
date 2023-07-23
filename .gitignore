@@ -1,4 +1,5 @@
 __pycache__
 accounts.json
-logs.txt
+logs.log
 proxies.txt
+test.ipynb

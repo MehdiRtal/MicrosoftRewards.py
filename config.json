@@ -1,5 +1,5 @@
 {
-    "workers": 1,
+    "workers": 5,
     "headless": false,
     "session": true,
     "goal": "000800000000"

@@ -32,7 +32,7 @@ class MicrosoftRewards:
         )
         self.context = self.browser.new_context()
         self.request_context = self.context.request
-        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] else route.continue_())
+        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] or any([x in route.request.url for x in ["images", "clarity", "Collector"]]) else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
         self.page = self.context.new_page()

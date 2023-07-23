@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 import argparse
 import json
 from loguru import logger
@@ -6,9 +6,16 @@ import pickle
 import os
 import base64
 import random
+import sys
 
 from rewards import MicrosoftRewards
 
+
+logger.configure(handlers=[
+        dict(sink=os.path.join(os.path.dirname(__file__), "logs.log"), diagnose=True, backtrace=True, enqueue=True),
+        dict(sink=sys.stdout, filter=lambda record: False if record["exception"] else True, enqueue=True),
+    ]
+)
 
 accounts_path = os.path.join(os.path.dirname(__file__), "accounts.json")
 proxies_path = os.path.join(os.path.dirname(__file__), "proxies.txt")
@@ -34,7 +41,7 @@ def farm(account):
             headless=args.headless,
             proxy=proxy
         ) as rewards:
-            logger.info(f"Logging in to {account['username']}")
+            logger.info(f"Logging in to '{account['username']}'")
             if args.session and "session" in account:
                 rewards.login(session=pickle.loads(base64.b64decode(account["session"])))
             else:
@@ -50,52 +57,51 @@ def farm(account):
                     proxies.remove(proxy)
                     with open(proxies_path, "w") as f:
                         f.write("\n".join(proxies))
-            logger.success(f"Logged in to {account['username']}")
+            logger.success(f"Logged in to '{account['username']}'")
             try:
-                logger.info(f"Completing daily set for {account['username']}")
+                logger.info(f"Completing daily set for '{account['username']}'")
                 rewards.complete_daily_set()
             except Exception as e:
                 logger.exception(e)
-                logger.error(f"Failed to complete daily set for {account['username']}")
+                logger.error(f"Failed to complete daily set for '{account['username']}'")
             else:
-                logger.success(f"Completed daily set for {account['username']}")
+                logger.success(f"Completed daily set for '{account['username']}'")
             try:
-                logger.info(f"Completing more promotions for {account['username']}")
+                logger.info(f"Completing more promotions for '{account['username']}'")
                 rewards.complete_more_promotions()
             except Exception as e:
                 logger.exception(e)
-                logger.error(f"Failed to complete more promotions for {account['username']}")
+                logger.error(f"Failed to complete more promotions for '{account['username']}'")
             else:
-                logger.success(f"Completed more promotions for {account['username']}")
+                logger.success(f"Completed more promotions for '{account['username']}'")
             try:
-                logger.info(f"Completing punch cards for {account['username']}")
+                logger.info(f"Completing punch cards for '{account['username']}'")
                 rewards.complete_punch_cards()
             except Exception as e:
                 logger.exception(e)
-                logger.error(f"Failed to complete punch cards for {account['username']}")
+                logger.error(f"Failed to complete punch cards for '{account['username']}'")
             else:
-                logger.success(f"Completed punch cards for {account['username']}")
+                logger.success(f"Completed punch cards for '{account['username']}'")
             if args.goal:
                 try:
-                    logger.info(f"Redeeming goal for {account['username']}")
+                    logger.info(f"Redeeming goal for '{account['username']}'")
                     rewards.redeem_goal(args.goal)
                 except Exception as e:
                     logger.exception(e)
-                    logger.error(f"Failed to redeem goal for {account['username']}")
+                    logger.error(f"Failed to redeem goal for '{account['username']}'")
                 else:
                     with open(os.path.join(os.path.dirname(__file__), "orders.json"), "w+") as f:
                         orders = json.load(f) if f.read() else []
                         orders.append(rewards.order)
                         json.dump(orders, f, indent=4)
-                    logger.success(f"Redeemed goal for {account['username']}")
+                    logger.success(f"Redeemed goal for '{account['username']}'")
     except Exception as e:
         logger.exception(e)
-        logger.error(f"Failed to farm {account['username']}")
+        logger.error(f"Failed to farm '{account['username']}'")
     else:
-        logger.success(f"Successfully farmed {account['username']}")
+        logger.success(f"Successfully farmed '{account['username']}'")
 
 if __name__ == "__main__":
-    logger.add("logs.txt", backtrace=True, diagnose=True)
-    with ThreadPoolExecutor(args.workers) as executor:
+    with ProcessPoolExecutor(args.workers) as executor:
         for account in accounts:
             executor.submit(farm, account=account)
