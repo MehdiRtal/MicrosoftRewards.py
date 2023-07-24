@@ -173,11 +173,8 @@ class MicrosoftRewards:
         for promotion in daily_set:
             if not promotion["complete"] and promotion["pointProgressMax"] > 0:
                 if promotion["promotionType"] == "quiz":
-                    if "PollScenarioId" in promotion["destinationUrl"]:
-                        self.__poll(promotion["offerId"])
-                    else:
-                        for _ in range(int(promotion["pointProgressMax"] / 10)):
-                            self.__quiz(promotion["offerId"])
+                    for _ in range(int(promotion["pointProgressMax"] / 5 if promotion["pointProgressMax"] == 50 else 10)):
+                        self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
                     self.__url_reward(promotion["offerId"], promotion["hash"])
 
@@ -200,11 +197,8 @@ class MicrosoftRewards:
                 for promotion in child_promotions:
                     if not promotion["complete"] or "appstore" not in promotion["promotionType"]:
                         if promotion["promotionType"] == "quiz":
-                            if "PollScenarioId" in promotion["destinationUrl"]:
-                                self.__poll(promotion["offerId"])
-                            else:
-                                for _ in range(int(promotion["pointProgressMax"] / 10)):
-                                    self.__quiz(promotion["offerId"])
+                            for _ in range(int(promotion["pointProgressMax"] / 10)):
+                                self.__quiz(promotion["offerId"])
                         elif promotion["promotionType"] == "urlreward":
                             self.__url_reward(promotion["offerId"], promotion["hash"])
 

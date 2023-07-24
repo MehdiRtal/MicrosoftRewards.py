@@ -22,14 +22,12 @@ playwright install chromium --with-deps
     {
         "username": "Your Email",
         "password": "Your Password",
-        "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)",
-        "goal": "Your Goal (https://rewards.bing.com/redeem/goal_id)"
+        "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)"
     },
     {
         "username": "Your Email",
         "password": "Your Password",
-        "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)",
-        "goal": "Your Goal (https://rewards.bing.com/redeem/goal_id)"
+        "proxy": "Your Proxy (HTTPS: user:pass@ip:port / HTTP: ip:port)"
     }
 ]
 ```
