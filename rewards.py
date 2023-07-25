@@ -162,7 +162,7 @@ class MicrosoftRewards:
         points_per_search = 5 if pc_search["pointProgressMax"] == 50 or pc_search["pointProgressMax"] == 250 else 3
         if not pc_search["complete"]:
             self.__search(int((pc_search["pointProgressMax"] - pc_search["pointProgress"]) / points_per_search))
-        if "mobileSearch" in self.dashboard["userStatus"]["counters"]:
+        if self.dashboard["userStatus"]["levelInfo"]["activeLevel"] == "Level2":
             mobile_search = self.dashboard["userStatus"]["counters"]["mobileSearch"][0]
             if not mobile_search["complete"]:
                 self.__search(int((mobile_search["pointProgressMax"] - mobile_search["pointProgress"]) / points_per_search), mobile=True)
