@@ -45,54 +45,51 @@ class MicrosoftRewards:
             self.page.context.add_cookies(session)
         self.page.goto("https://rewards.bing.com/")
         if username and password:
+            # Username
             self.page.locator("id=i0116").type(username)
             self.page.locator("id=idSIButton9").click()
-            error = self.page.locator("id=usernameError")
+            # Check username
             try:
-                error.wait_for(state="attached", timeout=5000)
+                self.page.locator("id=usernameError").wait_for(state="attached", timeout=5000)
             except:
                 pass
             else:
-                raise Exception(error.inner_text())
+                raise Exception("Invalid username")
+            # Password
             self.page.locator("id=i0118").type(password)
             self.page.locator("id=idSIButton9").click()
+            # Check password
             self.page.wait_for_load_state()
-            error = self.page.locator("id=passwordError")
             try:
-                error.wait_for(state="attached", timeout=5000)
+                self.page.locator("id=passwordError").wait_for(state="attached", timeout=5000)
             except:
                 pass
             else:
-                raise Exception(error.inner_text())
+                raise Exception("Invalid password")
+            # Check locked
+            try:
+                self.page.wait_for_url("https://account.live.com/Abuse", timeout=5000)
+            except:
+                pass
+            else:
+                raise Exception("Account locked")
+            # Stay signed in
             self.page.locator("id=idSIButton9").click()
             self.page.wait_for_load_state()
-            error = self.page.locator("id=iSelectProofTitle")
-            try:
-                error.wait_for(state="attached", timeout=5000)
-            except:
-                pass
-            else:
-                raise Exception(error.inner_text())
-            error = self.page.locator("id=error").locator("css=h1")
-            try:
-                error.wait_for(state="attached", timeout=5000)
-            except:
-                pass
-            else:
-                raise Exception(error.inner_text())
+            # Check new user
             try:
                 self.page.wait_for_url("https://rewards.bing.com/welcome", timeout=5000)
             except:
                 pass
             else:
                 self.page.goto("https://rewards.bing.com/createuser")
+            # Login bing
             bing_page = self.context.new_page()
             bing_page.goto("https://www.bing.com/rewards/signin")
             bing_page.locator("css=[class='identityOption']").locator("css=a").click()
             bing_page.wait_for_load_state()
             bing_page.wait_for_timeout(5000)
             bing_page.close()
-            self.session = self.context.cookies()
         self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
         self.refresh_dashboard()
 
@@ -173,6 +170,8 @@ class MicrosoftRewards:
         for promotion in daily_set:
             if not promotion["complete"] and promotion["pointProgressMax"] > 0:
                 if promotion["promotionType"] == "quiz":
+                    if "PollScenarioId" in promotion["destinationUrl"]:
+                        self.__poll(promotion["offerId"])
                     for _ in range(int(promotion["pointProgressMax"] / 5 if promotion["pointProgressMax"] == 50 else 10)):
                         self.__quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":

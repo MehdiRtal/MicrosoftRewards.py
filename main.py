@@ -9,9 +9,7 @@ import sys
 import os
 
 
-
 from rewards import MicrosoftRewards
-
 
 logger.configure(handlers=[
         dict(sink=os.path.join(os.path.dirname(__file__), "logs.log"), diagnose=True, backtrace=True, enqueue=True),
@@ -48,7 +46,7 @@ def farm(account):
                 rewards.login(session=pickle.loads(base64.b64decode(account["session"])))
             else:
                 rewards.login(username=account["username"], password=account["password"])
-                account["session"] = base64.b64encode(pickle.dumps(rewards.session)).decode()
+                account["session"] = base64.b64encode(pickle.dumps(rewards.context.cookies())).decode()
                 with open(accounts_path, "w") as f:
                     json.dump(accounts, f, indent=4)
             if "proxy" not in account:
