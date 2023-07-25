@@ -228,7 +228,7 @@ class MicrosoftRewards:
             headers={
                 "content-type": "application/x-www-form-urlencoded"
             },
-            data=f"productId={goal_id}&provider={goal_provider}&challenge.RequestId={request_id}&challenge.TrackingId=&challenge.ChallengeMessageTemplate=Your+Microsoft+Rewards+confirmation+code+is+%7B34%7D&challenge.State=CreateChallenge&expectedGreenId={green_id}&challenge.SendingType=SMS&challenge.Phone.CountryCode=1&challenge.Phone.Number=2034591805&__RequestVerificationToken={self.request_verification_token}"
+            data=f"productId={goal_id}&provider={goal_provider}&challenge.RequestId={request_id}&challenge.TrackingId=&challenge.ChallengeMessageTemplate=Your+Microsoft+Rewards+confirmation+code+is+%7B1%7D&challenge.State=CreateChallenge&expectedGreenId={green_id}&challenge.SendingType=SMS&challenge.Phone.CountryCode=1&challenge.Phone.Number=2034591805&__RequestVerificationToken={self.request_verification_token}"
         )
         if r.status != 200:
             raise Exception()
