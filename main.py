@@ -110,8 +110,8 @@ def farm(account):
         logger.exception(e)
         logger.error(f"Failed to farm '{account['username']}'")
     else:
-        account["status"] == "completed"
-        account["points"] = rewards.dashboard["availablePoints"]
+        account["status"] = "completed"
+        account["points"] = rewards.dashboard["userStatus"]["availablePoints"]
         with open(accounts_path, "w") as f:
             json.dump(accounts, f, indent=4)
         logger.success(f"Successfully farmed '{account['username']}'")
