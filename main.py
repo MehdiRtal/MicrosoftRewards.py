@@ -36,6 +36,7 @@ args = parser.parse_args()
 
 def farm(account):
     try:
+        account = accounts[accounts.index(account)]
         proxy = account["proxy"] if "proxy" in account else random.choice(proxies) if proxies else None
         with MicrosoftRewards(
             headless=args.headless,
@@ -57,6 +58,10 @@ def farm(account):
                     proxies.remove(proxy)
                     with open(proxies_path, "w") as f:
                         f.write("\n".join(proxies))
+            if "status" not in account:
+                account["status"] = "active"
+                with open(accounts_path, "w") as f:
+                    json.dump(accounts, f, indent=4)
             logger.success(f"Logged in to '{account['username']}'")
             try:
                 logger.info(f"Completing daily set for '{account['username']}'")
@@ -96,9 +101,19 @@ def farm(account):
                         json.dump(orders, f, indent=4)
                     logger.success(f"Redeemed goal for '{account['username']}'")
     except Exception as e:
+        if str(e) == "Account locked":
+            account["status"] = "locked"
+        else:
+            account["status"] = "failed"
+        with open(accounts_path, "w") as f:
+            json.dump(accounts, f, indent=4)
         logger.exception(e)
         logger.error(f"Failed to farm '{account['username']}'")
     else:
+        account["status"] == "completed"
+        account["points"] = rewards.dashboard["availablePoints"]
+        with open(accounts_path, "w") as f:
+            json.dump(accounts, f, indent=4)
         logger.success(f"Successfully farmed '{account['username']}'")
 
 if __name__ == "__main__":
