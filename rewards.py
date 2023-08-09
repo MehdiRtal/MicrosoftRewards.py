@@ -5,6 +5,7 @@ from random_user_agent.params import SoftwareName, OperatingSystem
 from pyvirtualdisplay import Display
 import datetime
 import os
+import time
 from bs4 import BeautifulSoup
 
 
@@ -102,10 +103,11 @@ class MicrosoftRewards:
         ).json()["dashboard"]
 
     def __search(self, count: int, mobile: bool = False):
-        for _ in range(count):
+        for _ in range(count+1):
             user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
             if mobile:
                 user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
+                time.sleep(0.125)
             self.request_context.post(
                 "https://www.bing.com/rewardsapp/reportActivity",
                 headers={
@@ -143,19 +145,21 @@ class MicrosoftRewards:
         )
 
     def __quiz(self, offer_id: str):
-        self.request_context.post(
-            "https://www.bing.com/bingqa/ReportActivity",
-            headers={
-                "content-type": "application/json"
-            },
-            data={
-                "OfferId": offer_id,
-                "ActivityCount": 1,
-                "QuestionIndex": "-1",
-                "UserId": None,
-                "TimeZoneOffset": 0,
-            }
-        )
+        for _ in range(2):
+            time.sleep(0.1)
+            self.request_context.post(
+                "https://www.bing.com/bingqa/ReportActivity",
+                headers={
+                    "content-type": "application/json"
+                    },
+                    data={
+                        "OfferId": offer_id,
+                        "ActivityCount": 1,
+                        "QuestionIndex": "-1",
+                        "UserId": None,
+                        "TimeZoneOffset": 0,
+                        }
+                        )
 
     def complete_daily_set(self):
         pc_search = self.dashboard["userStatus"]["counters"]["pcSearch"][0]
