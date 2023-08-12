@@ -106,7 +106,7 @@ class MicrosoftRewards:
             user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
             if mobile:
                 user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
-            for _ in range(count+1):
+            for _ in range(count+4):
                 self.request_context.post(
                     "https://www.bing.com/rewardsapp/reportActivity",
                     headers={
@@ -145,7 +145,6 @@ class MicrosoftRewards:
 
     def __quiz(self, offer_id: str):
         for _ in range(2):
-            time.sleep(0.1)
             self.request_context.post(
                 "https://www.bing.com/bingqa/ReportActivity",
                 headers={
