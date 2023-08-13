@@ -106,15 +106,15 @@ class MicrosoftRewards:
             user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
             if mobile:
                 user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
-            for _ in range(count+4):
+            for _ in range(count):
                 self.request_context.post(
                     "https://www.bing.com/rewardsapp/reportActivity",
                     headers={
                         "content-type": "application/x-www-form-urlencoded",
                         "user-agent": user_agent.get_random_user_agent()
-                        },
-                        data=f"url=https://www.bing.com/search?q={random.choice(words)}"
-                        )
+                    },
+                    data=f"url=https://www.bing.com/search?q={random.choice(words)}"
+                )
 
     def __url_reward(self, offer_id: str, hash: str):
         user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
@@ -144,20 +144,19 @@ class MicrosoftRewards:
         )
 
     def __quiz(self, offer_id: str):
-        for _ in range(2):
-            self.request_context.post(
-                "https://www.bing.com/bingqa/ReportActivity",
-                headers={
-                    "content-type": "application/json"
-                    },
-                    data={
-                        "OfferId": offer_id,
-                        "ActivityCount": 1,
-                        "QuestionIndex": "-1",
-                        "UserId": None,
-                        "TimeZoneOffset": 0,
-                        }
-                        )
+        self.request_context.post(
+            "https://www.bing.com/bingqa/ReportActivity",
+            headers={
+                "content-type": "application/json"
+                },
+            data={
+                "OfferId": offer_id,
+                "ActivityCount": 1,
+                "QuestionIndex": "-1",
+                "UserId": None,
+                "TimeZoneOffset": 0,
+            }
+        )
 
     def complete_daily_set(self):
         pc_search = self.dashboard["userStatus"]["counters"]["pcSearch"][0]
