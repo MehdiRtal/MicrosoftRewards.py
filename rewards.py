@@ -102,18 +102,18 @@ class MicrosoftRewards:
         ).json()["dashboard"]
 
     def _search(self, count: int, mobile: bool = False):
-            user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
-            if mobile:
-                user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
-            for _ in range(count):
-                self.request_context.post(
-                    "https://www.bing.com/rewardsapp/reportActivity",
-                    headers={
-                        "content-type": "application/x-www-form-urlencoded",
-                        "user-agent": user_agent.get_random_user_agent()
-                    },
-                    data=f"url=https://www.bing.com/search?q={random.choice(words)}"
-                )
+        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
+        if mobile:
+            user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
+        for _ in range(count):
+            self.request_context.post(
+                "https://www.bing.com/rewardsapp/reportActivity",
+                headers={
+                    "content-type": "application/x-www-form-urlencoded",
+                    "user-agent": user_agent.get_random_user_agent()
+                },
+                data=f"url=https://www.bing.com/search?q={random.choice(words)}"
+            )
 
     def _url_reward(self, offer_id: str, hash: str):
         user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
