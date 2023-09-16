@@ -6,39 +6,49 @@ from pyvirtualdisplay import Display
 import datetime
 import os
 from bs4 import BeautifulSoup
+from gologin_py import GoLogin
 
 
-with open("words.txt", "r") as f:
+with open(os.path.join(os.path.dirname(__file__), "words.txt")) as f:
     words = f.read().splitlines()
 
 class MicrosoftRewards:
-    def __init__(self, headless: bool = False, proxy: str = None):
+    def __init__(self, headless: bool = False, proxy: str = None, gologin_api_key: str = None, profile_id: str = None):
         if os.name == "posix" and "DISPLAY" not in os.environ:
             self.display = Display()
             self.display.start()
-        self.playwright = sync_playwright().start()
-        tmp_proxy = None
-        if proxy:
-            tmp_proxy = {
-                "server": f"http://{proxy}",
-            }
-            if "@" in proxy:
-                tmp_proxy["server"] = f"http://{proxy.split('@')[1]}"
-                tmp_proxy["username"] = proxy.split("@")[0].split(":")[0]
-                tmp_proxy["password"] = proxy.split("@")[0].split(":")[1]
-        self.browser = self.playwright.chromium.launch(
-            headless=headless,
-            proxy=tmp_proxy
-        )
-        self.context = self.browser.new_context()
-        self.request_context = self.context.request
-        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] or any([x in route.request.url for x in ["images", "clarity", "Collector"]]) else route.continue_())
-        self.context.set_default_navigation_timeout(30000)
-        self.context.set_default_timeout(5000)
-        self.page = self.context.new_page()
+        self.profile_id = profile_id
+        self.request_verification_token = None
         self.session = None
         self.dashboard = None
         self.order = None
+        self.playwright = sync_playwright().start()
+        # tmp_proxy = None
+        # if proxy:
+        #     tmp_proxy = {
+        #         "server": f"http://{proxy}",
+        #     }
+        #     if "@" in proxy:
+        #         tmp_proxy["server"] = f"http://{proxy.split('@')[1]}"
+        #         tmp_proxy["username"] = proxy.split("@")[0].split(":")[0]
+        #         tmp_proxy["password"] = proxy.split("@")[0].split(":")[1]
+        # self.browser = self.playwright.chromium.launch(
+        #     headless=headless,
+        #     proxy=tmp_proxy
+        # )
+        self.gologin = GoLogin(gologin_api_key)
+        if not self.profile_id:
+            self.profile_id = self.gologin.create_profile("msrewards", proxy=proxy)
+        ws_url = self.gologin.start_profile(self.profile_id)
+        self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
+        self.context = self.browser.contexts[0]
+        # self.context = self.browser.new_context()
+        self.request_context = self.context.request
+        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] or any([x in route.request.url for x in ["images", "clarity", "Collector"]]) else route.continue_())
+        self.context.set_default_navigation_timeout(60000)
+        self.context.set_default_timeout(10000)
+        # self.page = self.context.new_page()
+        self.page = self.context.pages[0]
 
     def login(self, username: str = None, password: str = None, session: dict = None):
         if session:
@@ -253,6 +263,7 @@ class MicrosoftRewards:
 
     def __exit__(self, *args):
         self.browser.close()
+        self.gologin.stop_profile()
         self.playwright.stop()
         if os.name == "posix" and "DISPLAY" not in os.environ:
             self.display.stop()

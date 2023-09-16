@@ -2,5 +2,6 @@
     "workers": 1,
     "headless": false,
     "session": true,
+    "gologin_api_key": "",
     "goal": "000800000000"
 }

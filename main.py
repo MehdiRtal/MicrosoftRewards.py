@@ -1,15 +1,13 @@
 from concurrent.futures import ProcessPoolExecutor
 from loguru import logger
 import argparse
-import pickle
-import base64
 import random
 import json
 import sys
 import os
 
-
 from rewards import MicrosoftRewards
+
 
 logger.configure(handlers=[
         dict(sink=os.path.join(os.path.dirname(__file__), "logs.log"), diagnose=True, backtrace=True, enqueue=True),
@@ -18,12 +16,15 @@ logger.configure(handlers=[
 )
 
 accounts_path = os.path.join(os.path.dirname(__file__), "accounts.json")
+
 proxies_path = os.path.join(os.path.dirname(__file__), "proxies.txt")
 
 with open(os.path.join(os.path.dirname(__file__), "config.json")) as f:
     config = json.load(f)
+
 with open(accounts_path) as f:
     accounts = json.load(f)
+
 with open(proxies_path) as f:
     proxies = f.read().splitlines()
 
@@ -31,6 +32,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--workers", type=int, default=config["workers"])
 parser.add_argument("--headless", action="store_true", default=config["headless"])
 parser.add_argument("--session", action="store_true", default=config["session"])
+parser.add_argument("--gologin-api-key", default=config["gologin_api_key"])
 parser.add_argument("--goal", default=config["goal"])
 args = parser.parse_args()
 
@@ -40,18 +42,31 @@ def farm(account):
         proxy = account["proxy"] if "proxy" in account else random.choice(proxies) if proxies else None
         with MicrosoftRewards(
             headless=args.headless,
-            proxy=proxy
+            proxy=proxy,
+            gologin_api_key=args.gologin_api_key if args.gologin_api_key else None,
+            profile_id=account["profile_id"] if "profile_id" in account else None
         ) as rewards:
             logger.info(f"Logging in to '{account['username']}'")
-            if args.session and "session" in account:
-                rewards.login(session=pickle.loads(base64.b64decode(account["session"])))
+            # if args.session and "session" in account:
+            #     rewards.login(session=pickle.loads(base64.b64decode(account["session"])))
+            # else:
+            #     rewards.login(username=account["username"], password=account["password"])
+            #     account["session"] = base64.b64encode(pickle.dumps(rewards.context.cookies())).decode()
+            #     with open(accounts_path, "w") as f:
+            #         json.dump(accounts, f, indent=4)
+            # if "proxy" not in account:
+            #     account["proxy"] = proxy
+            #     with open(accounts_path, "w") as f:
+            #         json.dump(accounts, f, indent=4)
+            #     if proxy in proxies:
+            #         proxies.remove(proxy)
+            #         with open(proxies_path, "w") as f:
+            #             f.write("\n".join(proxies))
+            if args.gologin_api_key and "profile_id" in account:
+                rewards.login()
             else:
                 rewards.login(username=account["username"], password=account["password"])
-                account["session"] = base64.b64encode(pickle.dumps(rewards.context.cookies())).decode()
-                with open(accounts_path, "w") as f:
-                    json.dump(accounts, f, indent=4)
-            if "proxy" not in account:
-                account["proxy"] = proxy
+                account["profile_id"] = rewards.profile_id
                 with open(accounts_path, "w") as f:
                     json.dump(accounts, f, indent=4)
                 if proxy in proxies:

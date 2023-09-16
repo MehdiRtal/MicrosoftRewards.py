@@ -3,3 +3,4 @@ random_user_agent
 pyvirtualdisplay
 loguru
 bs4
+git+https://github.com/MehdiRtal/GoLogin.py.git
