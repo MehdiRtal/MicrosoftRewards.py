@@ -1,3 +1,5 @@
+import base64
+import pickle
 from concurrent.futures import ProcessPoolExecutor
 from loguru import logger
 import argparse
@@ -5,7 +7,6 @@ import random
 import json
 import sys
 import os
-
 from rewards import MicrosoftRewards
 
 
@@ -28,6 +29,8 @@ with open(accounts_path) as f:
 with open(proxies_path) as f:
     proxies = f.read().splitlines()
 
+proxies = []
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--workers", type=int, default=config["workers"])
 parser.add_argument("--headless", action="store_true", default=config["headless"])
@@ -41,34 +44,24 @@ def farm(account):
         account = accounts[accounts.index(account)]
         proxy = account["proxy"] if "proxy" in account else random.choice(proxies) if proxies else None
         with MicrosoftRewards(
+            name=account["username"],
             headless=args.headless,
             proxy=proxy,
             gologin_api_key=args.gologin_api_key if args.gologin_api_key else None,
-            profile_id=account["profile_id"] if "profile_id" in account else None
+            profile_id=account["profile_id"] if "profile_id" in account else None,
+            fingerprint=pickle.loads(base64.b64decode(account["fingerprint"])) if "fingerprint" in account else None,
+            session=pickle.loads(base64.b64decode(account["session"])) if "session" in account else None
         ) as rewards:
             logger.info(f"Logging in to '{account['username']}'")
-            # if args.session and "session" in account:
-            #     rewards.login(session=pickle.loads(base64.b64decode(account["session"])))
-            # else:
-            #     rewards.login(username=account["username"], password=account["password"])
-            #     account["session"] = base64.b64encode(pickle.dumps(rewards.context.cookies())).decode()
-            #     with open(accounts_path, "w") as f:
-            #         json.dump(accounts, f, indent=4)
-            # if "proxy" not in account:
-            #     account["proxy"] = proxy
-            #     with open(accounts_path, "w") as f:
-            #         json.dump(accounts, f, indent=4)
-            #     if proxy in proxies:
-            #         proxies.remove(proxy)
-            #         with open(proxies_path, "w") as f:
-            #             f.write("\n".join(proxies))
-            if args.gologin_api_key and "profile_id" in account:
+            if "session" in account:
                 rewards.login()
             else:
                 rewards.login(username=account["username"], password=account["password"])
-                account["profile_id"] = rewards.profile_id
-                with open(accounts_path, "w") as f:
-                    json.dump(accounts, f, indent=4)
+            account["session"] = base64.b64encode(pickle.dumps(rewards.all_cookies)).decode()
+            account["fingerprint"] = base64.b64encode(pickle.dumps(rewards.fingerprint)).decode()
+            account["profile_id"] = rewards.profile_id
+            with open(accounts_path, "w") as f:
+                json.dump(accounts, f, indent=4)
                 if proxy in proxies:
                     proxies.remove(proxy)
                     with open(proxies_path, "w") as f:
@@ -102,6 +95,14 @@ def farm(account):
                 logger.error(f"Failed to complete punch cards for '{account['username']}'")
             else:
                 logger.success(f"Completed punch cards for '{account['username']}'")
+            try:
+                logger.info(f"Completing daily gaming card for '{account['username']}'")
+                rewards.complete_daily_gaming_card()
+            except Exception as e:
+                logger.exception(e)
+                logger.error(f"Failed to complete daily gaming card for '{account['username']}'")
+            else:
+                logger.success(f"Completed daily gaming card for '{account['username']}'")
             if args.goal:
                 try:
                     logger.info(f"Redeeming goal for '{account['username']}'")
@@ -130,6 +131,7 @@ def farm(account):
         with open(accounts_path, "w") as f:
             json.dump(accounts, f, indent=4)
         logger.success(f"Successfully farmed '{account['username']}'")
+
 
 if __name__ == "__main__":
     with ProcessPoolExecutor(args.workers) as executor:
