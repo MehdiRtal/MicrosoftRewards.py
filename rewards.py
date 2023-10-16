@@ -1,58 +1,57 @@
-from playwright.sync_api import sync_playwright
-import random
-from random_user_agent.user_agent import UserAgent
-from random_user_agent.params import SoftwareName, OperatingSystem
-from pyvirtualdisplay import Display
 import datetime
 import os
+import random
+import time
+
+import pytz
 from bs4 import BeautifulSoup
 from gologin_py import GoLogin
-
+from playwright.sync_api import sync_playwright
+from pyvirtualdisplay import Display
+from random_user_agent.params import SoftwareName, OperatingSystem
+from random_user_agent.user_agent import UserAgent
 
 with open(os.path.join(os.path.dirname(__file__), "words.txt")) as f:
     words = f.read().splitlines()
 
+
 class MicrosoftRewards:
-    def __init__(self, headless: bool = False, proxy: str = None, gologin_api_key: str = None, profile_id: str = None):
+    def __init__(self, name: str = None, headless: bool = False, proxy: str = None, gologin_api_key: str = None,
+                 profile_id: str = None, fingerprint: dict = None, session: list = None):
         if os.name == "posix" and "DISPLAY" not in os.environ:
             self.display = Display()
             self.display.start()
         self.profile_id = profile_id
         self.request_verification_token = None
-        self.session = None
+        self.session = session
+        self.fingerprint = fingerprint
         self.dashboard = None
         self.order = None
         self.playwright = sync_playwright().start()
-        # tmp_proxy = None
-        # if proxy:
-        #     tmp_proxy = {
-        #         "server": f"http://{proxy}",
-        #     }
-        #     if "@" in proxy:
-        #         tmp_proxy["server"] = f"http://{proxy.split('@')[1]}"
-        #         tmp_proxy["username"] = proxy.split("@")[0].split(":")[0]
-        #         tmp_proxy["password"] = proxy.split("@")[0].split(":")[1]
-        # self.browser = self.playwright.chromium.launch(
-        #     headless=headless,
-        #     proxy=tmp_proxy
-        # )
+        self.all_cookies = None
         self.gologin = GoLogin(gologin_api_key)
-        if not self.profile_id:
-            self.profile_id = self.gologin.create_profile("msrewards", proxy=proxy)
+        if not (self.profile_id and self.gologin.does_profile_exists(self.profile_id)):
+            self.profile_id = self.gologin.create_profile(name, proxy=proxy)
+        if self.fingerprint:
+            self.gologin.update_profile_fingerprint(self.profile_id, fingerprint, proxy=proxy)
+        if self.session:
+            self.gologin.set_profile_cookies(self.profile_id, session)
+        self.fingerprint = self.gologin.get_profile_fingerprint(self.profile_id)
         ws_url = self.gologin.start_profile(self.profile_id)
+        self.gologin.stop_profile(self.profile_id)
         self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
         self.context = self.browser.contexts[0]
-        # self.context = self.browser.new_context()
         self.request_context = self.context.request
-        self.context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "manifest", "other"] or any([x in route.request.url for x in ["images", "clarity", "Collector"]]) else route.continue_())
+        self.context.route("**/*",
+                           lambda route: route.abort() if route.request.resource_type in ["image", "media", "font",
+                                                                                          "manifest", "other"] or any(
+                               [x in route.request.url for x in
+                                ["images", "clarity", "Collector"]]) else route.continue_())
         self.context.set_default_navigation_timeout(60000)
         self.context.set_default_timeout(10000)
-        # self.page = self.context.new_page()
         self.page = self.context.pages[0]
 
-    def login(self, username: str = None, password: str = None, session: dict = None):
-        if session:
-            self.page.context.add_cookies(session)
+    def login(self, username: str = None, password: str = None):
         self.page.goto("https://rewards.bing.com/")
         if username and password:
             # Username
@@ -100,8 +99,10 @@ class MicrosoftRewards:
             bing_page.wait_for_load_state()
             bing_page.wait_for_timeout(5000)
             bing_page.close()
-        self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute("value")
+        self.request_verification_token = self.page.locator("css=input[name=__RequestVerificationToken]").get_attribute(
+            "value")
         self._refresh_dashboard()
+        self.all_cookies = self.gologin.get_profile_cookies(self.profile_id)
 
     def _refresh_dashboard(self):
         self.dashboard = self.request_context.get(
@@ -111,22 +112,31 @@ class MicrosoftRewards:
             }
         ).json()["dashboard"]
 
+    def random_line(self, fname):
+        lines = open(fname).read().splitlines()
+        return '+'.join(random.choice(lines).split(' '))
+
     def _search(self, count: int, mobile: bool = False):
-        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
+        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value],
+                               operating_systems=[OperatingSystem.WINDOWS.value])
         if mobile:
-            user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value], operating_systems=[OperatingSystem.ANDROID.value])
-        for _ in range(count):
+            user_agent = UserAgent(software_names=[SoftwareName.CHROME.value, SoftwareName.FIREFOX.value],
+                                   operating_systems=[OperatingSystem.ANDROID.value])
+        for i in range(count):
+            print(f"Search {i}, remaining {count - i}, total {count}")
             self.request_context.post(
                 "https://www.bing.com/rewardsapp/reportActivity",
                 headers={
                     "content-type": "application/x-www-form-urlencoded",
                     "user-agent": user_agent.get_random_user_agent()
                 },
-                data=f"url=https://www.bing.com/search?q={random.choice(words)}"
+                data=f"url=https://www.bing.com/search?q={self.random_line('sentences.txt')}"
             )
+            time.sleep(40)
 
     def _url_reward(self, offer_id: str, hash: str):
-        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value], operating_systems=[OperatingSystem.WINDOWS.value])
+        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value],
+                               operating_systems=[OperatingSystem.WINDOWS.value])
         self.request_context.post(
             "https://rewards.bing.com/api/reportactivity",
             headers={
@@ -157,7 +167,7 @@ class MicrosoftRewards:
             "https://www.bing.com/bingqa/ReportActivity",
             headers={
                 "content-type": "application/json"
-                },
+            },
             data={
                 "OfferId": offer_id,
                 "ActivityCount": 1,
@@ -175,14 +185,17 @@ class MicrosoftRewards:
         if self.dashboard["userStatus"]["levelInfo"]["activeLevel"] == "Level2":
             mobile_search = self.dashboard["userStatus"]["counters"]["mobileSearch"][0]
             if not mobile_search["complete"]:
-                self._search(int((mobile_search["pointProgressMax"] - mobile_search["pointProgress"]) / points_per_search), mobile=True)
-        daily_set = self.dashboard["dailySetPromotions"][datetime.datetime.now().strftime("%m/%d/%Y")]
+                self._search(
+                    int((mobile_search["pointProgressMax"] - mobile_search["pointProgress"]) / points_per_search),
+                    mobile=True)
+        daily_set = self.dashboard["dailySetPromotions"][datetime.datetime.now(pytz.timezone('America/New_York')).strftime("%m/%d/%Y")]
         for promotion in daily_set:
             if not promotion["complete"] and promotion["pointProgressMax"] > 0:
                 if promotion["promotionType"] == "quiz":
                     if "PollScenarioId" in promotion["destinationUrl"]:
                         self._poll(promotion["offerId"])
-                    for _ in range(int(promotion["pointProgressMax"] / 5 if promotion["pointProgressMax"] == 50 else 10)):
+                    for _ in range(
+                            int(promotion["pointProgressMax"] / 5 if promotion["pointProgressMax"] == 50 else 10)):
                         self._quiz(promotion["offerId"])
                 elif promotion["promotionType"] == "urlreward":
                     self._url_reward(promotion["offerId"], promotion["hash"])
@@ -210,6 +223,19 @@ class MicrosoftRewards:
                                 self._quiz(promotion["offerId"])
                         elif promotion["promotionType"] == "urlreward":
                             self._url_reward(promotion["offerId"], promotion["hash"])
+
+    def complete_daily_gaming_card(self):
+        gaming_card = self.dashboard["userStatus"]["dashboardImpression"]
+        user_agent = UserAgent(software_names=[SoftwareName.EDGE.value],
+                               operating_systems=[OperatingSystem.WINDOWS.value])
+        self.request_context.post(
+            "https://rewards.bing.com/api/reportactivity?X-Requested-With=XMLHttpRequest",
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "user-agent": user_agent.get_random_user_agent()
+            },
+            data=f"id={gaming_card['offerId']}&hash={gaming_card['hash']}&timeZone=0&activityAmount=1&dbs=0&__RequestVerificationToken={self.request_verification_token}"
+        )
 
     def redeem_goal(self, goal_id: str):
         self.catalog = self.request_context.get(
@@ -256,7 +282,8 @@ class MicrosoftRewards:
         if r.status != 200:
             raise Exception()
         soup = BeautifulSoup(r.text(), "html.parser")
-        self.order = {"orderId": request_id, "securityCode": soup.find("div", {"class": "tango-credential-value"}), "redeemUrl": soup.find("a").get("href")}
+        self.order = {"orderId": request_id, "securityCode": soup.find("div", {"class": "tango-credential-value"}),
+                      "redeemUrl": soup.find("a").get("href")}
 
     def __enter__(self):
         return self
