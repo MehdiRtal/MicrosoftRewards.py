@@ -38,7 +38,6 @@ class MicrosoftRewards:
             self.gologin.set_profile_cookies(self.profile_id, session)
         self.fingerprint = self.gologin.get_profile_fingerprint(self.profile_id)
         ws_url = self.gologin.start_profile(self.profile_id)
-        self.gologin.stop_profile(self.profile_id)
         self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
         self.context = self.browser.contexts[0]
         self.request_context = self.context.request
